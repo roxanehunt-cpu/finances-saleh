@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finances Saleh</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101A38">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finances Saleh">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/inter.min.css">
 <style>
@@ -119,7 +127,9 @@
   .stat.pos .value{color:var(--teal);}
   .stat.neg .value{color:var(--rust);}
 
-  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px;}
+  table{width:100%; min-width:560px; border-collapse:collapse; font-size:13.5px;}
+  @media (max-width:640px){ table{font-size:12.5px;} th,td{padding:8px 8px;} }
   th{
     text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
     color:var(--ink-soft); padding:8px 10px; border-bottom:2px solid var(--line);
@@ -528,7 +538,7 @@ function renderDashboard(){
     </div>
     <div class="card">
       <h2>Derniers mois</h2>
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th>Mois</th><th>Revenus</th><th>Charges</th><th>Reste</th><th>Statut</th></tr></thead>
         <tbody>
           ${sm.slice(-6).reverse().map(m=>{
@@ -542,7 +552,7 @@ function renderDashboard(){
             </tr>`;
           }).join('')}
         </tbody>
-      </table>
+      </table></div>
     </div>
   `;
 }
@@ -592,7 +602,7 @@ function renderCharges(){
           <button class="btn gold small" onclick="openMonthForm(null)">+ Nouveau mois</button>
         </div>
       </div>
-      ${sm.length ? `<table>
+      ${sm.length ? `<div class="table-scroll"><table>
         <thead><tr><th>Mois</th><th>Salaires</th><th>Entrées annexes</th><th>Charges fixes</th><th>Charges var.</th><th>Reste</th><th>Statut</th><th></th></tr></thead>
         <tbody>
           ${sm.map(m=>{
@@ -611,7 +621,7 @@ function renderCharges(){
             ${isOpen? `<tr><td colspan="8" style="background:var(--paper2);">${detailBlock(m)}</td></tr>` : ''}`;
           }).join('')}
         </tbody>
-      </table>` : '<div class="empty">Aucun mois pour ce filtre.</div>'}
+      </table></div>` : '<div class="empty">Aucun mois pour ce filtre.</div>'}
     </div>
   `;
 }
@@ -711,7 +721,7 @@ function renderEpargne(){
           ${availableYears().map(y=>`<option value="${y}" ${epargneFilterYear===y?'selected':''}>${y}</option>`).join('')}
         </select>
       </div>
-      ${series.filter(s=>epargneFilterYear==='all'||s.mois.slice(0,4)===epargneFilterYear).length ? `<table>
+      ${series.filter(s=>epargneFilterYear==='all'||s.mois.slice(0,4)===epargneFilterYear).length ? `<div class="table-scroll"><table>
         <thead><tr><th>Mois</th><th>Contribution Nassim</th><th>Contribution Roxane</th><th>Contribution commune</th><th>Cumul commun</th></tr></thead>
         <tbody>
           ${series.filter(s=>epargneFilterYear==='all'||s.mois.slice(0,4)===epargneFilterYear).map(s=>`
@@ -724,7 +734,7 @@ function renderEpargne(){
             </tr>
           `).join('')}
         </tbody>
-      </table>` : '<div class="empty">Aucune contribution enregistrée.</div>'}
+      </table></div>` : '<div class="empty">Aucune contribution enregistrée.</div>'}
     </div>
   `;
 }
@@ -1074,6 +1084,13 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
   generateMonthsUntil('2027-12');
   render();
 })();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
 </script>
 </body>
 </html>
