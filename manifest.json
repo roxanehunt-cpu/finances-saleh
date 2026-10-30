@@ -1,13 +1,13 @@
 {
-  "name": "Finances Saleh",
-  "short_name": "Finances Saleh",
-  "description": "Gestion partagée des charges, de l'épargne et des projets communs",
+  "name": "Saleh Wealth",
+  "short_name": "Saleh Wealth",
+  "description": "Building wealth together : charges, épargne et projets communs",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0B1020",
-  "theme_color": "#0B1020",
+  "background_color": "#0B1824",
+  "theme_color": "#0B1824",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
