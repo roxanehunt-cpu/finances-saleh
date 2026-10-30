@@ -440,6 +440,14 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
 .gimg{width:64px; height:52px; border-radius:9px; object-fit:cover; flex-shrink:0}
 @media (max-width:1180px){ .dgrid.c2{grid-template-columns:1fr} }
 @media (max-width:899px){ .tabbar button{font-size:10.5px} .tabbar .plus{flex:0 0 56px} .accgrid{grid-template-columns:1fr} .acc-bal{font-size:18px} .mv{grid-template-columns:1fr auto auto} .mv .tx-d{grid-column:1 / -1} .pbanner{height:140px} }
+
+.rk{display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--surface-2); color:var(--ink-2); font-size:12px; font-weight:700; flex-shrink:0; vertical-align:middle}
+.rk.first{background:#1D6FE0; color:#fff}
+.prio{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; background:rgba(79,163,255,.16); color:#7DB9FF; vertical-align:middle; margin-left:4px}
+.prow{display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.pr-b{flex:1; min-width:0}
+.tools .btn[disabled]{opacity:.35; cursor:default}
 </style>
 </head>
 <body>
@@ -580,7 +588,7 @@ function normalize(s){
     epargne:{nassim:0,roxane:0,both:0,...(m.epargne||{})}
   }));
   o.expenses = asArray(o.expenses).map(e=>({id:e.id, date:e.date||'', amount:+e.amount||0, group:e.group||'chargesVariables', cat:e.cat||'', who:e.who||'', note:e.note||'', _u:e._u||0}));
-  o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', _u:p._u||0,
+  o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', budget:+p.budget||0, prio:+p.prio||0, _u:p._u||0,
     items:asArray(p.items).map(i=>({id:i.id, label:i.label||'', amount:+i.amount||0, checked:!!i.checked}))}));
   o.accounts = asArray(o.accounts).map(a=>({id:a.id, name:a.name||'', bank:a.bank||'', kind:a.kind||'courant', start:+a.start||0, _u:a._u||0, moves:asArray(a.moves).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||''}))}));
   const c = o.categories||{};
@@ -1069,8 +1077,8 @@ function sparkBars(vals, color){
   return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${vals.map((v,i)=>{
     const bh = Math.max(3, Math.abs(v)/mx*(h-2)); return `<rect x="${(i*(w/n)).toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="${color}" opacity="${i===n-1?1:.45}"/>`; }).join('')}</svg>`;
 }
-function deltaHtml(p, goodUp){
-  if(p==null) return `<div class="dl muted">Pas de mois précédent</div>`;
+function deltaHtml(p, goodUp, hasPrev){
+  if(p==null) return `<div class="dl muted">${hasPrev?'–':'Pas de mois précédent'}</div>`;
   const up = p>=0, good = goodUp ? up : !up;
   return `<div class="dl ${good?'pos':'neg'}">${up?'↗':'↘'} ${up?'+':''}${Math.round(p)} % <span class="muted">vs. mois dernier</span></div>`;
 }
@@ -1137,10 +1145,10 @@ function renderSynthese(){
   const win = all.slice(Math.max(0,idx-5), idx+1).map(totalsFor);
   const spark = k => sparkBars(win.map(t=>t[k]));
   const kc = `<div class="kcards">
-    ${kcard('Revenus', tm.revenus, '#4FA3FF', 'wallet', deltaHtml(tp?pctChange(tm.revenus,tp.revenus):null,true), sparkBars(win.map(t=>t.revenus),'#4FA3FF'))}
-    ${kcard('Dépenses', tm.charges, '#FB7185', 'card', deltaHtml(tp?pctChange(tm.charges,tp.charges):null,false), sparkBars(win.map(t=>t.charges),'#FB7185'))}
-    ${kcard('Épargne', tm.epargne, '#34D399', 'coins', deltaHtml(tp?pctChange(tm.epargne,tp.epargne):null,true), sparkBars(win.map(t=>t.epargne),'#34D399'))}
-    ${kcard('Solde disponible', tm.reste, '#A78BFA', 'pie', deltaHtml(tp?pctChange(tm.reste,tp.reste):null,true), sparkBars(win.map(t=>Math.max(0,t.reste)),'#A78BFA'))}
+    ${kcard('Revenus', tm.revenus, '#4FA3FF', 'wallet', deltaHtml(tp?pctChange(tm.revenus,tp.revenus):null,true,!!tp), sparkBars(win.map(t=>t.revenus),'#4FA3FF'))}
+    ${kcard('Dépenses', tm.charges, '#FB7185', 'card', deltaHtml(tp?pctChange(tm.charges,tp.charges):null,false,!!tp), sparkBars(win.map(t=>t.charges),'#FB7185'))}
+    ${kcard('Épargne', tm.epargne, '#34D399', 'coins', deltaHtml(tp?pctChange(tm.epargne,tp.epargne):null,true,!!tp), sparkBars(win.map(t=>t.epargne),'#34D399'))}
+    ${kcard('Solde disponible', tm.reste, '#A78BFA', 'pie', deltaHtml(tp?pctChange(tm.reste,tp.reste):null,true,!!tp), sparkBars(win.map(t=>Math.max(0,t.reste)),'#A78BFA'))}
   </div>`;
 
   /* Patrimoine = épargne commune cumulée jusqu'au mois affiché */
@@ -1179,12 +1187,12 @@ function renderSynthese(){
   /* Objectifs */
   const g = state.goal, toDate = cumulAt(mk), goals = [];
   if(g.target>0) goals.push({ic:'target', label:g.label||"Objectif d'épargne", v:toDate.both, t:g.target, col:'#4FA3FF'});
-  const PC = ['#A78BFA','#34D399','#FBBF24','#FB7185'];
-  state.projects.slice(0,4).forEach((p,i)=>{ const t = sum(p.items,x=>x.amount), d = sum(p.items.filter(x=>x.checked),x=>x.amount); goals.push({ic:'flag', label:p.title, v:d, t, col:PC[i%4], img:p.img}); });
-  const objectifs = `<section class="panel dc"><div class="panel-head"><h2>Objectifs d'épargne</h2><a class="lnk" href="#" onclick="setTab('projets');return false">Voir tout ›</a></div><div class="panel-body">
+  const PC = ['#A78BFA','#34D399','#FBBF24','#FB7185'], PF = projFunding(mk);
+  projOrder().slice(0,4).forEach((p,i)=>{ const f = PF[p.id]; goals.push({ic:'flag', label:p.title, v:f.funded, t:f.target, col:PC[i%4], img:p.img, rank:i+1, eta:f.eta}); });
+  const objectifs = `<section class="panel dc"><div class="panel-head"><h2>Objectifs et projets</h2><a class="lnk" href="#" onclick="setTab('projets');return false">Voir tout ›</a></div><div class="panel-body">
     ${goals.length ? goals.map(o=>{ const p = o.t>0 ? Math.max(0,Math.min(100,Math.round(o.v/o.t*100))) : 0;
-      return `<div class="go">${o.img?`<img class="gimg" src="${o.img}" alt="">`:`<span class="gic" style="background:${o.col}22;color:${o.col}">${dic(o.ic)}</span>`}<div class="gb"><div class="gt"><b>${esc(o.label)}</b><span class="num" style="color:${o.col}">${p} %</span></div>
-        <div class="help" style="margin:0 0 5px">${fmtN(o.v)} / ${fmtN(o.t)} FCFA</div><div class="bar"><i style="width:${p}%;background:${o.col}"></i></div></div></div>`; }).join('')
+      return `<div class="go">${o.img?`<img class="gimg" src="${o.img}" alt="">`:`<span class="gic" style="background:${o.col}22;color:${o.col}">${dic(o.ic)}</span>`}<div class="gb"><div class="gt"><b>${esc(o.label)}${o.rank===1?' <span class="prio">Priorité</span>':''}</b><span class="num" style="color:${o.col}">${p} %</span></div>
+        <div class="help" style="margin:0 0 5px">${fmtN(o.v)} / ${fmtN(o.t)} FCFA${o.eta&&o.v<o.t?' · vers '+monthLabel(o.eta):''}</div><div class="bar"><i style="width:${p}%;background:${o.col}"></i></div></div></div>`; }).join('')
       : `<div class="empty">Aucun objectif.<br><a class="lnk" href="#" onclick="editGoal();return false">Définir un objectif</a></div>`}</div></section>`;
 
   /* Dépenses vs épargne sur l'année du mois affiché */
@@ -1368,25 +1376,75 @@ function renderEpargne(){
       </table></div>` : '<div class="empty">Aucun versement enregistré. Touchez « Ajouter un versement ».</div>'}</div></section>`;
 }
 
+/* ---------- Projets liés à l'épargne ---------- */
+const PROJ_RE = /voiture|véhicule|vehicule|automobile|\bauto\b|4x4/i;
+function projOrder(){
+  return state.projects.map((p,i)=>({p, k: p.prio>0 ? p.prio : (PROJ_RE.test(p.title) ? 0.5 : 1000+i)})).sort((a,b)=>a.k-b.k).map(x=>x.p);
+}
+const projTarget = p => { const s = sum(p.items,i=>i.amount); return s>0 ? s : (p.budget||0); };
+function avgSaving(mk){
+  const ser = epargneSeries().filter(s=>s.mois<=mk && s.contrib.both>0).slice(-3);
+  return ser.length ? sum(ser,s=>s.contrib.both)/ser.length : 0;
+}
+/* L'épargne commune cumulée finance les projets dans l'ordre de priorité. */
+function projFunding(mk){
+  const P0 = Math.max(0, cumulAt(mk).both), avg = avgSaving(mk), out = {};
+  let pool = P0, need = 0;
+  projOrder().forEach((p,i)=>{
+    const t = projTarget(p), f = Math.min(pool, t); pool -= f; need += t;
+    let eta = null;
+    if(t>0 && need>P0 && avg>0){ let k = mk; for(let n=Math.min(600,Math.ceil((need-P0)/avg)); n>0; n--) k = nextMois(k); eta = k; }
+    out[p.id] = {rank:i+1, target:t, funded:f, pct:t>0?Math.round(f/t*100):0, eta};
+  });
+  return out;
+}
+function makeFirst(p){ const ord = projOrder().filter(x=>x!==p); [p].concat(ord).forEach((x,k)=>{ x.prio = k+1; }); }
+function moveProject(id, d){
+  const ord = projOrder(), i = ord.findIndex(p=>p.id===id), j = i+d; if(i<0||j<0||j>=ord.length) return;
+  [ord[i],ord[j]] = [ord[j],ord[i]]; ord.forEach((p,k)=>{ p.prio = k+1; }); persist(); render();
+}
+const etaText = f => f.target<=0 ? 'Ajoutez un budget pour suivre ce projet' : f.pct>=100 ? 'Financé par l’épargne' : f.eta ? 'Financé vers '+monthLong(f.eta) : 'Aucun versement récent pour estimer la date';
+function projFields(p, first){
+  return [{id:'t',label:'Nom du projet',value:p?p.title:'',placeholder:'Ex. Voiture, Maison, Vacances 2027',required:true},
+    {id:'bud',label:'Budget estimé (F)',type:'number',value:p?(p.budget||''):'',help:'Utilisé quand le projet n’a pas encore de lignes de budget. Sinon, le total des lignes compte.'},
+    {id:'pr',label:'Priorité',type:'select',value:first?'1':'0',options:[{v:'0',l:'Selon le classement'},{v:'1',l:'Prioritaire : financé en premier'}]},
+    {id:'d',label:'Échéance (facultatif)',type:'month',value:p?p.target:''}];
+}
+function addProject(){
+  const m = formModal({title:'Nouveau projet', fields:projFields(null,false), submit:'Créer', onSubmit:v=>{
+    if(!v.t.trim()){ toast('Donnez un nom au projet.', true); return false; }
+    const p = {id:'p'+uid(), title:v.t.trim(), target:v.d||'', budget:parseFloat(v.bud)||0, prio:0, img:pendImg.val||'', items:[]};
+    state.projects.push(p); if(v.pr==='1') makeFirst(p); persist(); render(); toast('Projet créé'); }});
+  attachImage(m, '');
+}
+function editProject(id){
+  const p = state.projects.find(x=>x.id===id);
+  const m = formModal({title:'Modifier le projet', fields:projFields(p, projOrder()[0]===p), onSubmit:v=>{
+    p.title = v.t.trim()||p.title; p.target = v.d||''; p.budget = parseFloat(v.bud)||0; if(pendImg.val!==null) p.img = pendImg.val;
+    if(v.pr==='1' && projOrder()[0]!==p) makeFirst(p); persist(); render(); toast('Enregistré'); }});
+  attachImage(m, p.img);
+}
 function renderProjets(){
-  const P = state.projects, tot = p => sum(p.items,i=>i.amount), done = p => sum(p.items.filter(i=>i.checked),i=>i.amount);
-  const overview = P.length>1 ? panel('Vue d\'ensemble', P.map(p=>{
-    const t = tot(p), d = done(p), pc = t?Math.round(d/t*100):0;
-    return `<div class="proj-row"><div><b>${esc(p.title)}</b>${p.target?`<div class="help" style="margin:0">Échéance ${monthLabel(p.target)}</div>`:''}</div>
-      <div><div class="bar"><i style="width:${pc}%"></i></div></div><div class="num" style="text-align:right">${fmt(d)} / ${fmt(t)}</div></div>`;
-  }).join('')) : '';
-  $('#main').innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:16px"><button class="btn" onclick="addProject()">Nouveau projet</button></div>`
-    + overview
-    + (P.length ? P.map(p=>{
-      const t = tot(p), d = done(p), pc = t?Math.round(d/t*100):0;
-      return `<section class="panel"><div class="panel-head"><div><h2>${esc(p.title)}</h2><div class="sub">${p.target?'Échéance '+monthLong(p.target)+' – ':''}${fmt(d)} engagés sur ${fmt(t)} (${pc} %)</div></div>
-        <div class="tools"><button class="btn secondary sm" onclick="editProject('${p.id}')">Modifier / photo</button><button class="btn danger sm" onclick="deleteProject('${p.id}')">Supprimer</button></div></div>
-        <div class="panel-body">${p.img?`<img class="pbanner" src="${p.img}" alt="">`:''}<div class="bar" style="margin-bottom:10px"><i style="width:${pc}%"></i></div>
-        <div class="items">${p.items.length ? p.items.map(i=>`<div class="it"><input type="checkbox" ${i.checked?'checked':''} onchange="toggleItem('${p.id}','${i.id}')" aria-label="Engagé : ${esc(i.label)}">
-          <button class="lb ${i.checked?'done':''}" onclick="editItem('${p.id}','${i.id}')" title="Modifier">${esc(i.label)}</button><span class="num">${fmt(i.amount)}</span>
-          <button class="btn danger sm icon" onclick="deleteItem('${p.id}','${i.id}')" aria-label="Supprimer ${esc(i.label)}">×</button></div>`).join('') : '<div class="empty" style="padding:14px 0">Aucune ligne de budget. Ajoutez la première ci-dessous.</div>'}</div>
-        <form class="additem" onsubmit="return addItem(event,'${p.id}')"><input type="text" placeholder="Nouvelle ligne de budget" id="nl-${p.id}" aria-label="Libellé"><input type="number" inputmode="decimal" placeholder="Montant" id="na-${p.id}" aria-label="Montant"><button class="btn secondary" type="submit">Ajouter</button></form></div></section>`;
-    }).join('') : '<div class="panel"><div class="empty">Aucun projet pour le moment. Créez-en un pour suivre son budget.</div></div>');
+  const mk = pickMonth()||todayKey(), F = projFunding(mk), ord = projOrder(), pool = cumulAt(mk).both, avg = avgSaving(mk);
+  const done = p => sum(p.items.filter(i=>i.checked),i=>i.amount);
+  const summary = `<section class="panel"><div class="panel-head"><div><h2>Épargne affectée aux projets</h2><div class="sub">Votre épargne commune (${fmt(pool)}${avg>0?', environ '+fmt(avg)+' par mois':''}) finance les projets dans l’ordre de priorité.</div></div>
+    <button class="btn" onclick="addProject()">Nouveau projet</button></div><div class="panel-body">
+    ${ord.length ? ord.map(p=>{ const f = F[p.id]; return `<div class="prow"><span class="rk ${f.rank===1?'first':''}">${f.rank}</span>
+      ${p.img?`<img class="gimg" src="${p.img}" alt="">`:''}<div class="pr-b"><div class="gt"><b>${esc(p.title)}</b><span class="num">${f.pct} %</span></div>
+      <div class="bar"><i class="${f.pct>=100?'ok':''}" style="width:${f.pct}%"></i></div>
+      <div class="help" style="margin:5px 0 0">${fmtN(f.funded)} / ${fmtN(f.target)} F · ${etaText(f)}</div></div></div>`; }).join('') : '<div class="empty">Aucun projet pour le moment. Créez « Voiture », « Maison »… pour les suivre.</div>'}</div></section>`;
+  $('#main').innerHTML = summary + ord.map((p,idx)=>{
+    const f = F[p.id], d = done(p), t = sum(p.items,i=>i.amount);
+    return `<section class="panel"><div class="panel-head"><div><h2><span class="rk ${idx===0?'first':''}">${f.rank}</span> ${esc(p.title)}${idx===0?' <span class="prio">Prioritaire</span>':''}</h2><div class="sub">${p.target?'Échéance '+monthLong(p.target)+' – ':''}${fmt(f.funded)} financés par l’épargne sur ${fmt(f.target)} (${f.pct} %)</div></div>
+      <div class="tools"><button class="btn secondary sm icon" onclick="moveProject('${p.id}',-1)" aria-label="Monter en priorité" ${idx===0?'disabled':''}>↑</button><button class="btn secondary sm icon" onclick="moveProject('${p.id}',1)" aria-label="Baisser en priorité" ${idx===ord.length-1?'disabled':''}>↓</button>
+      <button class="btn secondary sm" onclick="editProject('${p.id}')">Modifier / photo</button><button class="btn danger sm" onclick="deleteProject('${p.id}')">Supprimer</button></div></div>
+      <div class="panel-body">${p.img?`<img class="pbanner" src="${p.img}" alt="">`:''}<div class="bar" style="margin-bottom:6px"><i class="${f.pct>=100?'ok':''}" style="width:${f.pct}%"></i></div>
+      <div class="help" style="margin:0 0 14px">${etaText(f)}${t>0?' · '+fmt(d)+' déjà engagés (lignes cochées)':''}</div>
+      <div class="items">${p.items.length ? p.items.map(i=>`<div class="it"><input type="checkbox" ${i.checked?'checked':''} onchange="toggleItem('${p.id}','${i.id}')" aria-label="Engagé : ${esc(i.label)}">
+        <button class="lb ${i.checked?'done':''}" onclick="editItem('${p.id}','${i.id}')" title="Modifier">${esc(i.label)}</button><span class="num">${fmt(i.amount)}</span>
+        <button class="btn danger sm icon" onclick="deleteItem('${p.id}','${i.id}')" aria-label="Supprimer ${esc(i.label)}">×</button></div>`).join('') : '<div class="empty" style="padding:14px 0">Aucune ligne de budget. Ajoutez la première ci-dessous.</div>'}</div>
+      <form class="additem" onsubmit="return addItem(event,'${p.id}')"><input type="text" placeholder="Nouvelle ligne de budget" id="nl-${p.id}" aria-label="Libellé"><input type="number" inputmode="decimal" placeholder="Montant" id="na-${p.id}" aria-label="Montant"><button class="btn secondary" type="submit">Ajouter</button></form></div></section>`;
+  }).join('');
 }
 
 /* ---------- Page : orchestration ---------- */
@@ -1657,17 +1715,6 @@ function renderDepenses(){
 function setCat(k){ ui.cat = (ui.cat===k) ? 'all' : k; render(); }
 
 /* ---------- Projets ---------- */
-function addProject(){
-  const m = formModal({title:'Nouveau projet', fields:[{id:'t',label:'Nom du projet',placeholder:'Ex. Maison, Voiture, Vacances 2027',required:true},{id:'d',label:'Échéance (facultatif)',type:'month',value:''}],
-    submit:'Créer', onSubmit:v=>{ if(!v.t.trim()){ toast('Donnez un nom au projet.', true); return false; } state.projects.push({id:'p'+uid(), title:v.t.trim(), target:v.d||'', img:pendImg.val||'', items:[]}); persist(); render(); toast('Projet créé'); }});
-  attachImage(m, '');
-}
-function editProject(id){
-  const p = state.projects.find(x=>x.id===id);
-  const m = formModal({title:'Modifier le projet', fields:[{id:'t',label:'Nom du projet',value:p.title},{id:'d',label:'Échéance (facultatif)',type:'month',value:p.target}],
-    onSubmit:v=>{ p.title = v.t.trim()||p.title; p.target = v.d||''; if(pendImg.val!==null) p.img = pendImg.val; persist(); render(); toast('Enregistré'); }});
-  attachImage(m, p.img);
-}
 function deleteProject(id){
   const p = state.projects.find(x=>x.id===id);
   confirmModal({title:'Supprimer ce projet ?', message:`« ${p.title} » et ses ${p.items.length} lignes de budget seront supprimés.`, confirm:'Supprimer', onConfirm:()=>{ state.projects = state.projects.filter(x=>x.id!==id); persist(); render(); toast('Projet supprimé'); }});
