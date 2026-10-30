@@ -372,9 +372,12 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
    à la saisir sur chaque appareil. Exemple :
    SYNC_URL: 'https://finances-saleh.mon-compte.workers.dev'
    ============================================================ */
-const CONFIG = { SYNC_URL: '' };
+const CONFIG = {
+  SYNC_URL: 'https://finance-saleh-default-rtdb.europe-west1.firebasedatabase.app',
+  API_KEY: 'AIzaSyAy9vdAsgdUM5OPsCT7QhNKB8GX3O5UuOA'   /* Clé API Web Firebase (Paramètres du projet, onglet Général). Elle n'est pas secrète. */
+};
 
-const LS = { state:'finsaleh.state.v2', user:'finsaleh.user', sync:'finsaleh.sync', ui:'finsaleh.ui' };
+const LS = { state:'finsaleh.state.v2', user:'finsaleh.user', sync:'finsaleh.sync', auth:'finsaleh.auth', ui:'finsaleh.ui' };
 const PALETTE = ['#6C8CFF','#34D399','#FBBF24','#A78BFA','#22D3EE','#FB7185','#94A3C4','#F472B6'];
 const C_NASSIM = '#6C8CFF', C_ROXANE = '#34D399', C_REV = '#6C8CFF', C_CHG = '#7F8DB0', C_COM = '#EEF2FB';
 
@@ -545,13 +548,40 @@ function mergeStates(a, b){ // a = local, b = distant
 
 /* ---------- Synchronisation (Firebase Realtime Database ou Worker compatible) ---------- */
 let syncStatus = {kind:'local', msg:'', at:0}, syncing = false, syncQueued = false, syncTimer = null;
-function getSync(){
-  let saved = {}; try{ saved = JSON.parse(localStorage.getItem(LS.sync)||'{}'); }catch(e){}
-  return { url:(saved.url || CONFIG.SYNC_URL || '').trim().replace(/\/+$/,''), code:(saved.code||'').trim() };
+/* Connexion par e-mail et mot de passe (Firebase Authentication). La session reste ouverte sur l'appareil. */
+let auth = null;
+try{ auth = JSON.parse(localStorage.getItem(LS.auth)||'null'); }catch(e){}
+const keyOk = () => /^AIza[\w-]{30,}$/.test(CONFIG.API_KEY);
+function saveAuth(){ try{ if(auth) localStorage.setItem(LS.auth, JSON.stringify(auth)); else localStorage.removeItem(LS.auth); }catch(e){} }
+const AUTH_ERR = {
+  EMAIL_NOT_FOUND:'Aucun compte avec cet e-mail.', INVALID_PASSWORD:'Mot de passe incorrect.', INVALID_LOGIN_CREDENTIALS:'E-mail ou mot de passe incorrect.',
+  USER_DISABLED:'Ce compte est désactivé.', TOO_MANY_ATTEMPTS_TRY_LATER:'Trop de tentatives. Réessayez dans quelques minutes.',
+  OPERATION_NOT_ALLOWED:"La connexion par e-mail n'est pas activée dans Firebase (Authentication, Sign-in method).", INVALID_EMAIL:"Cet e-mail n'est pas valide."
+};
+async function fbPost(url, body, form){
+  const ctrl = new AbortController(), tm = setTimeout(()=>ctrl.abort(), 12000);
+  try{
+    const res = await fetch(url+'?key='+encodeURIComponent(CONFIG.API_KEY), {method:'POST', signal:ctrl.signal,
+      headers:{'Content-Type': form?'application/x-www-form-urlencoded':'application/json'}, body: form?new URLSearchParams(body).toString():JSON.stringify(body)});
+    const j = await res.json().catch(()=>({}));
+    if(!res.ok){ const code = ((j.error&&j.error.message)||'').split(' ')[0]; const e = new Error(code||('HTTP '+res.status)); e.fb = code; e.status = res.status; throw e; }
+    return j;
+  } finally { clearTimeout(tm); }
 }
-const CODE_RE = /^[A-Za-z0-9_-]{8,64}$/, URL_RE = /^https:\/\/[\w.-]+$/;
-function syncEnabled(){ const s=getSync(); return URL_RE.test(s.url) && CODE_RE.test(s.code); }
-function remoteUrl(){ const s=getSync(); return s.url+'/foyers/'+s.code+'.json'; }
+async function signIn(email, password){
+  const r = await fbPost('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword', {email, password, returnSecureToken:true});
+  auth = {email:r.email||email, idToken:r.idToken, refreshToken:r.refreshToken, exp:Date.now()+(+r.expiresIn||3600)*1000}; saveAuth();
+}
+function signOut(){ auth = null; saveAuth(); setStatus('local','Déconnecté : les données restent sur cet appareil.'); render(); }
+async function getToken(){
+  if(!auth) return null;
+  if(Date.now() < auth.exp - 120000) return auth.idToken;
+  const r = await fbPost('https://securetoken.googleapis.com/v1/token', {grant_type:'refresh_token', refresh_token:auth.refreshToken}, true);
+  auth = {...auth, idToken:r.id_token, refreshToken:r.refresh_token||auth.refreshToken, exp:Date.now()+(+r.expires_in||3600)*1000}; saveAuth();
+  return auth.idToken;
+}
+function syncEnabled(){ return keyOk() && !!auth; }
+async function remoteUrl(){ const tok = await getToken(); return CONFIG.SYNC_URL.replace(/\/+$/,'')+'/foyer.json?auth='+encodeURIComponent(tok); }
 function setStatus(kind, msg){ syncStatus = {kind, msg:msg||'', at: kind==='ok'?Date.now():syncStatus.at}; renderStatus(); }
 function renderStatus(){
   const labels = {local:'Local uniquement', syncing:'Synchronisation…', ok:'Synchronisé', offline:'Hors ligne', error:'Erreur de synchro'};
@@ -561,16 +591,17 @@ function renderStatus(){
   });
 }
 async function rfetch(method, body){
+  const url = await remoteUrl();
   const ctrl = new AbortController(), t = setTimeout(()=>ctrl.abort(), 12000);
   try{
-    const res = await fetch(remoteUrl(), {method, headers: body?{'Content-Type':'application/json'}:undefined, body: body?JSON.stringify(body):undefined, signal:ctrl.signal, cache:'no-store'});
+    const res = await fetch(url, {method, headers: body?{'Content-Type':'application/json'}:undefined, body: body?JSON.stringify(body):undefined, signal:ctrl.signal, cache:'no-store'});
     if(!res.ok){ const e = new Error('HTTP '+res.status); e.status = res.status; throw e; }
     return await res.json();
   } finally { clearTimeout(t); }
 }
 function scheduleSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(sync, 700); }
 async function sync(){
-  if(!syncEnabled()){ setStatus('local', 'Les données sont enregistrées sur cet appareil uniquement.'); renderBanner(); return {ok:false, reason:'disabled'}; }
+  if(!syncEnabled()){ setStatus('local', keyOk() ? 'Non connecté : les données sont enregistrées sur cet appareil uniquement.' : 'Synchronisation non configurée.'); renderBanner(); return {ok:false, reason:'disabled'}; }
   if(syncing){ syncQueued = true; return {ok:false, reason:'busy'}; }
   syncing = true; setStatus('syncing');
   let result = {ok:true};
@@ -587,7 +618,8 @@ async function sync(){
     setStatus('ok', 'Dernière synchronisation à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
   }catch(e){
     result = {ok:false, error:e};
-    if(e.status===401 || e.status===403) setStatus('error', "Accès refusé par Firebase. Vérifiez que les règles de la base sont publiées et que l'adresse est correcte.");
+    if(e.fb && /TOKEN_EXPIRED|INVALID_REFRESH_TOKEN|USER_NOT_FOUND|USER_DISABLED|INVALID_GRANT/.test(e.fb)){ auth = null; saveAuth(); setStatus('error','Session expirée : reconnectez-vous.'); setTimeout(openLogin, 300); }
+    else if(e.status===401 || e.status===403) setStatus('error', "Accès refusé : vérifiez les règles de la base Firebase (voir les instructions) et que ce compte existe.");
     else if(e.status===404) setStatus('error', "Base introuvable : vérifiez l'adresse de la base Firebase.");
     else if(e.name==='AbortError' || e instanceof TypeError) setStatus('offline', "Connexion impossible. Vos modifications restent enregistrées sur cet appareil et seront envoyées dès le retour du réseau.");
     else setStatus('error', 'Erreur : '+(e.message||e));
@@ -1045,7 +1077,7 @@ function render(){
   $('#yearSel').innerHTML = `<option value="all">Toutes les années</option>` + ys.map(y=>`<option value="${y}" ${ui.year===y?'selected':''}>${y}</option>`).join('');
   $('#yearSel').value = ui.year;
   ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, projets:renderProjets})[ui.tab]();
-  const banner = `<div class="banner" id="syncBanner" role="status"><span><b>Données non partagées.</b> Elles sont enregistrées uniquement sur cet appareil. Activez la synchronisation pour que Nassim et Roxane voient les mêmes informations.</span><button class="btn secondary sm" onclick="openSettings()">Configurer</button></div>`;
+  const banner = `<div class="banner" id="syncBanner" role="status"><span><b>Données non partagées.</b> Elles sont enregistrées uniquement sur cet appareil. Connectez-vous pour que Nassim et Roxane voient les mêmes informations.</span><button class="btn secondary sm" onclick="openLogin()">Se connecter</button></div>`;
   $('#main').insertAdjacentHTML('afterbegin', banner);
   renderBanner(); mountCharts(); renderChrome();
 }
@@ -1324,44 +1356,52 @@ function deleteItem(pid,iid){ const p = state.projects.find(x=>x.id===pid); p.it
 /* ============================================================
    PARAMÈTRES : profil, synchronisation, sauvegarde
    ============================================================ */
-function pickUser(locked){
+function pickUser(locked, after){
   const mo = openModal(`<h3>Qui utilise cet appareil ?</h3><p class="sub">Cela permet d'indiquer qui a modifié les données en dernier.</p>
     <div class="pickuser"><button data-u="Nassim">Nassim</button><button data-u="Roxane">Roxane</button></div>`, {locked});
-  mo.qa('[data-u]').forEach(b=>b.onclick=()=>{ currentUser=b.dataset.u; try{localStorage.setItem(LS.user,currentUser);}catch(e){} mo.close(); renderChrome(); });
+  mo.qa('[data-u]').forEach(b=>b.onclick=()=>{ currentUser=b.dataset.u; try{localStorage.setItem(LS.user,currentUser);}catch(e){} mo.close(); renderChrome(); if(after) after(); });
 }
-function randomCode(){ const a=new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a,b=>'abcdefghijkmnpqrstuvwxyz23456789'[b%32]).join(''); }
+function openLogin(){
+  if(document.getElementById('loginForm')) return;
+  if(!keyOk()){ toast('La synchronisation doit encore être configurée (clé API manquante).', true); return; }
+  const mo = openModal(`<h3>Connexion</h3><p class="sub">Une seule fois par appareil : la session reste ouverte ensuite.</p>
+    <form id="loginForm" novalidate>
+      <div class="field"><label for="l_mail">E-mail</label><input id="l_mail" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+      <div class="field"><label for="l_pw">Mot de passe</label><input id="l_pw" type="password" autocomplete="current-password"></div>
+      <div class="help" id="l_err" role="alert" style="color:var(--neg);min-height:18px"></div>
+      <div class="actions"><button type="button" class="btn secondary" data-close>Plus tard</button><button type="submit" class="btn" id="l_go">Se connecter</button></div>
+    </form>`);
+  mo.q('#l_mail').focus();
+  mo.q('#loginForm').onsubmit = async e=>{
+    e.preventDefault(); const mail = mo.q('#l_mail').value.trim(), pw = mo.q('#l_pw').value, err = mo.q('#l_err');
+    if(!mail || !pw){ err.textContent = 'Saisissez votre e-mail et votre mot de passe.'; return; }
+    const btn = mo.q('#l_go'); btn.disabled = true; btn.textContent = 'Connexion…'; err.textContent = '';
+    try{
+      await signIn(mail, pw); mo.close(); toast('Connecté'); renderChrome(); await sync(); render();
+    }catch(ex){
+      btn.disabled = false; btn.textContent = 'Se connecter';
+      err.textContent = AUTH_ERR[ex.fb] || (ex.name==='AbortError'||ex instanceof TypeError ? 'Connexion impossible. Vérifiez le réseau.' : (ex.fb==='API_KEY_INVALID' || /API key/i.test(ex.message) ? 'Clé API Firebase invalide.' : 'Erreur : '+(ex.message||ex)));
+    }
+  };
+}
 function openSettings(){
-  const s = getSync();
-  const mo = openModal(`<h3>Paramètres</h3><p class="sub">Profil, partage entre appareils et sauvegarde.</p>
+  const mo = openModal(`<h3>Paramètres</h3><p class="sub">Profil, compte et sauvegarde.</p>
     <div class="sect"><h4>Profil</h4><div class="field"><label for="s_user">Cet appareil est utilisé par</label><select id="s_user"><option value="">Non défini</option><option ${currentUser==='Nassim'?'selected':''}>Nassim</option><option ${currentUser==='Roxane'?'selected':''}>Roxane</option></select></div></div>
-    <div class="sect"><h4>Partage entre appareils</h4>
-      <p class="help" style="margin:0 0 12px">Les données sont d'abord enregistrées sur l'appareil. Pour que Nassim et Roxane voient les mêmes informations, saisissez la même adresse et le même code du foyer sur chaque appareil.</p>
-      <div class="field"><label for="s_url">Adresse de la base Firebase</label><input id="s_url" type="url" value="${esc(s.url)}" placeholder="https://finance-saleh-default-rtdb.europe-west1.firebasedatabase.app" autocomplete="off"></div>
-      <div class="field"><label for="s_code">Code du foyer</label><div class="catrow" style="margin:0"><input id="s_code" type="text" value="${esc(s.code)}" placeholder="8 à 64 caractères : lettres, chiffres, - ou _" autocomplete="off"><button type="button" class="btn secondary" id="s_gen">Générer</button></div>
-      <div class="help">Ce code sert de clé d'accès : ne le partagez qu'avec les personnes du foyer.</div></div>
-      <div class="help" id="s_state" role="status">${esc(syncStatus.msg||'')}</div>
-      <details><summary>D'où vient cette adresse ?</summary><p class="help">Dans la console Firebase, onglet Realtime Database, onglet Données : l'adresse est affichée en haut (elle se termine par firebaseio.com ou firebasedatabase.app). Copiez-la sans rien après. Elle est identique sur tous les appareils.</p></details></div>
+    <div class="sect"><h4>Compte et partage</h4>
+      ${auth ? `<p class="help" style="margin:0 0 10px">Connecté : <b>${esc(auth.email)}</b>. Vos données sont partagées avec les autres comptes du foyer.</p><div class="help" id="s_state" role="status">${esc(syncStatus.msg||'')}</div><div class="tools" style="margin-top:10px"><button class="btn secondary" id="s_now">Synchroniser maintenant</button><button class="btn danger" id="s_out">Se déconnecter</button></div>`
+             : `<p class="help" style="margin:0 0 10px">Non connecté : les données restent sur cet appareil.</p><button class="btn" id="s_in">Se connecter</button>`}</div>
     <div class="sect"><h4>Sauvegarde</h4><div class="tools"><button class="btn secondary" id="s_exp">Exporter (JSON)</button><button class="btn secondary" id="s_imp">Importer…</button><input type="file" id="s_file" accept="application/json,.json" hidden></div>
       <div class="help">Une sauvegarde contient tous les mois, projets et catégories.</div></div>
-    <div class="actions"><button class="btn secondary" data-close>Fermer</button><button class="btn" id="s_save">Enregistrer et synchroniser</button></div>`, {wide:true});
-  mo.q('#s_gen').onclick = ()=>{ mo.q('#s_code').value = randomCode(); };
+    <div class="actions"><button class="btn secondary" data-close>Fermer</button><button class="btn" id="s_save">Enregistrer</button></div>`, {wide:true});
   mo.q('#s_exp').onclick = exportBackup;
   mo.q('#s_imp').onclick = ()=>mo.q('#s_file').click();
   mo.q('#s_file').onchange = e=>{ const f=e.target.files[0]; if(f) importBackup(f, mo); };
-  mo.q('#s_save').onclick = async ()=>{
+  const si = mo.q('#s_in'); if(si) si.onclick = ()=>{ mo.close(); openLogin(); };
+  const so = mo.q('#s_out'); if(so) so.onclick = ()=>{ mo.close(); signOut(); };
+  const sn = mo.q('#s_now'); if(sn) sn.onclick = async ()=>{ sn.disabled = true; await sync(); mo.q('#s_state').textContent = syncStatus.msg||''; sn.disabled = false; };
+  mo.q('#s_save').onclick = ()=>{
     const u = mo.q('#s_user').value; if(u){ currentUser=u; try{localStorage.setItem(LS.user,u);}catch(e){} } else { currentUser=null; try{localStorage.removeItem(LS.user);}catch(e){} }
-    const url = mo.q('#s_url').value.trim().replace(/\/+$/,''), code = mo.q('#s_code').value.trim();
-    if(url || code){
-      if(!URL_RE.test(url)){ toast("L'adresse doit commencer par https:// et ne pas contenir de chemin.", true); return; }
-      if(!CODE_RE.test(code)){ toast('Le code doit contenir 8 à 64 caractères : lettres, chiffres, - ou _.', true); return; }
-    }
-    try{ localStorage.setItem(LS.sync, JSON.stringify({url, code})); }catch(e){}
-    renderChrome(); const btn = mo.q('#s_save'); btn.disabled = true; btn.textContent = 'Synchronisation…';
-    const r = await sync(); btn.disabled = false; btn.textContent = 'Enregistrer et synchroniser';
-    mo.q('#s_state').textContent = syncStatus.msg || '';
-    if(r.ok){ toast('Synchronisation réussie'); mo.close(); render(); }
-    else if(r.reason==='disabled'){ toast('Enregistré. Le partage reste désactivé tant que l\'adresse et le code ne sont pas renseignés.'); mo.close(); render(); }
-    else toast(syncStatus.msg || 'Synchronisation impossible.', true);
+    renderChrome(); mo.close(); toast('Enregistré');
   };
 }
 function exportBackup(){
@@ -1399,7 +1439,7 @@ function boot(){
   $('#yearSel').onchange = e=>{ ui.year = e.target.value; ui.month = null; saveUi(); render(); };
   render();
   if(autoRecurring()) render();
-  if(!currentUser) pickUser(true);
+  if(!currentUser) pickUser(true, ()=>{ if(!auth && keyOk()) openLogin(); }); else if(!auth && keyOk()) openLogin();
   sync();
   setInterval(()=>{ if(document.visibilityState==='visible') sync(); }, 30000);
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') sync(); });
