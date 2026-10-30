@@ -516,6 +516,35 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
 
 /* Menu de gauche : garde ses couleurs bleu nuit, la page de droite est blanche */
 .side{--side:#08131D; --surface:#102335; --surface-2:#173049; --hover:#14293F; --field:#0C1B2A; --line:#1F3A52; --line-strong:#2E4E69; --ink:#EAF3F4; --ink-2:#B9CAD3; --ink-3:#8EA3B0; --accent-ink:#96CAD3; --accent-hi:#5190AE; --pos:#34D399; --neg:#FB7185; background:#08131D; color:#EAF3F4}
+
+.pill.ns{background:var(--surface-2); color:var(--ink-3)}
+.itw{border-bottom:1px solid var(--line)} .itw .it{border-bottom:0; padding-bottom:4px}
+.isub{display:flex; align-items:center; gap:10px; padding:0 0 10px 30px; font-size:12px; color:var(--ink-3)}
+.isub .bar{flex:1; min-width:40px} .isub .num{white-space:nowrap}
+.chstats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px}
+.chstats div{background:var(--surface-2); border-radius:10px; padding:10px 12px} .chstats span{display:block; font-size:12px; color:var(--ink-3)} .chstats b{font-size:15px}
+.simctl{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px} .simctl input{width:150px; text-align:right}
+.simrow{display:grid; grid-template-columns:24px 1fr auto; gap:4px 10px; align-items:center; padding:9px 0; border-top:1px solid var(--line)}
+.simrow .simeta{grid-column:2 / -1; font-size:12.5px; color:var(--ink-3)}
+.dtop{margin-bottom:16px} .dacts{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+.alerts{display:grid; gap:6px} .al{display:flex; gap:10px; align-items:center; padding:10px 14px; border-radius:10px; font-size:13.5px; background:var(--warn-soft); color:var(--ink)}
+.al .ad{width:8px; height:8px; border-radius:50%; background:var(--warn); flex-shrink:0}
+.al.over{background:var(--neg-soft)} .al.over .ad{background:var(--neg)} .al.due{background:var(--accent-soft)} .al.due .ad{background:#1D6FE0}
+.fact{display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid var(--line); font-size:14px} .fact:first-child{border-top:0} .fact span{color:var(--ink-3)}
+.cr.wide{grid-template-columns:minmax(80px,140px) 1fr auto}
+.bt{width:100%; border-collapse:collapse; font-size:13.5px} .bt th{font-weight:600; color:var(--ink-3); text-align:left; padding:8px 10px; font-size:12px} .bt td{padding:8px 10px; border-top:1px solid var(--line)} .bt .r,.rp .r{text-align:right} .bt tr.tot td{font-weight:700}
+.tbl{overflow-x:auto}
+.rpbox{max-height:52vh; overflow:auto; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:12px; background:#fff; color:#111}
+.rp h1{font-size:20px;margin:0} .rp h2{font-size:14px;margin:18px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px} .rp h2 small{font-weight:400;color:#777}
+.rp table{width:100%;border-collapse:collapse;font-size:13px} .rp td{padding:4px 0;border-bottom:1px solid #eee} .rp .muted{color:#777}
+.rp-h{display:flex;justify-content:space-between;align-items:flex-start} .rp-k{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px} .rp-k div{border:1px solid #ddd;border-radius:8px;padding:8px} .rp-k span{display:block;font-size:11px;color:#777} .rp-k b.neg{color:#c00}
+.bil2{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) !important} @media (max-width:899px){.bil2{grid-template-columns:minmax(0,1fr) !important}}
+.bt th,.bt td{padding:8px 6px !important; white-space:nowrap}
+.bt,.rp table{min-width:0 !important} .rp td{padding:4px 0 !important; position:static !important; background:transparent !important; border-bottom:1px solid #eee !important} .rp td+td{padding-left:12px !important} .bt td,.bt th{position:static !important}
+@media (max-width:640px){.bt{font-size:11px} .bt td,.bt th{padding:7px 2px !important}}
+#printArea{display:none}
+@media print{ body>*:not(#printArea){display:none !important} #printArea{display:block !important; padding:16px; background:#fff; color:#111} }
+@media (max-width:640px){ .chstats{grid-template-columns:1fr 1fr} .rp-k{grid-template-columns:1fr 1fr} }
 </style>
 </head>
 <body>
@@ -668,12 +697,12 @@ function normalize(s){
     epargne:{nassim:0,roxane:0,both:0,...(m.epargne||{})}
   }));
   o.expenses = asArray(o.expenses).map(e=>({id:e.id, date:e.date||'', amount:+e.amount||0, group:e.group||'chargesVariables', cat:e.cat||'', who:e.who||'', note:e.note||'', _u:e._u||0}));
-  o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', budget:+p.budget||0, prio:+p.prio||0, _u:p._u||0,
-    items:asArray(p.items).map(i=>({id:i.id, label:i.label||'', amount:+i.amount||0, checked:!!i.checked}))}));
+  o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', budget:+p.budget||0, prio:+p.prio||0, acc:p.acc||'', kind:p.kind||'', _u:p._u||0,
+    items:asArray(p.items).map(i=>({id:i.id, label:i.label||'', amount:+i.amount||0, checked:!!i.checked, paid:+i.paid||0, st:i.st||''}))}));
   o.accounts = asArray(o.accounts).map(a=>({id:a.id, name:a.name||'', bank:a.bank||'', kind:a.kind||'courant', start:+a.start||0, _u:a._u||0, moves:asArray(a.moves).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||''}))}));
   const c = o.categories||{};
   o.categories = {};
-  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ o.categories[g] = (asArray(c[g]).length||c[g]!==undefined ? asArray(c[g]) : SEED_CATEGORIES[g]).map(x=>({id:x.id,label:x.label,budget:+x.budget||0,rec:+x.rec||0})); });
+  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ o.categories[g] = (asArray(c[g]).length||c[g]!==undefined ? asArray(c[g]) : SEED_CATEGORIES[g]).map(x=>({id:x.id,label:x.label,budget:+x.budget||0,rec:+x.rec||0,day:+x.day||0})); });
   const sr = c.salaryRec||{}; o.categories.salaryRec = {nassim:+sr.nassim||0, roxane:+sr.roxane||0};
   o.goal = {label:'', target:0, ...(o.goal||{})}; o.goal.startN = +o.goal.startN||0; o.goal.startR = +o.goal.startR||0;
   o.catsU = o.catsU||0; o.goalU = o.goalU||0; o.tomb = {...(o.tomb||{})};
@@ -958,10 +987,11 @@ const ICONS = {
   charges:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
   epargne:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   comptes:'<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/>',
+  bilan:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   projets:'<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>'
 };
-const TABS = [['synthese','Accueil'],['depenses','Dépenses'],['charges','Charges'],['epargne','Épargne'],['comptes','Comptes'],['projets','Projets']];
-const TITLES = {synthese:'Accueil', depenses:'Journal des dépenses', charges:'Charges et revenus', epargne:'Épargne', comptes:'Comptes', projets:'Projets communs'};
+const TABS = [['synthese','Accueil'],['depenses','Dépenses'],['charges','Charges'],['epargne','Épargne'],['comptes','Comptes'],['projets','Projets'],['bilan','Bilan annuel']];
+const TITLES = {synthese:'Accueil', depenses:'Journal des dépenses', charges:'Charges et revenus', epargne:'Épargne', comptes:'Comptes', projets:'Projets communs', bilan:'Bilan annuel'};
 const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 
 function toast(msg, err){
@@ -1295,7 +1325,7 @@ function renderSynthese(){
   const comptes = `<section class="panel dc"><div class="panel-head"><h2>Vue des comptes</h2><a class="lnk" href="#" onclick="setTab('comptes');return false">${A.length?'Gérer':'+ Ajouter un compte'} ›</a></div><div class="panel-body">
     ${A.length ? A.map(a=>`<button class="arow" onclick="setTab('comptes')" style="--c:${accKind(a).c}"><span class="bank">${esc(initials(a.bank||a.name))}</span><span class="an"><b>${esc(a.name)}</b><small>${esc(a.bank||accKind(a).l)}</small></span><span class="num">${fmtN(accBal(a))} <small>FCFA</small></span></button>`).join('')+`<div class="atot"><span>Total</span><b class="num">${fmtN(accTotal())} FCFA</b></div>`
       : '<div class="empty">Aucun compte enregistré.<br><br><button class="btn" onclick="setTab(\'comptes\')">Ajouter mes comptes</button></div>'}</div></section>`;
-  $('#main').innerHTML = `<div class="dash">${kc}<div class="dgrid a">${patri}${repart}</div><div class="dgrid b">${vs}${cats}${contrib}</div><div class="dgrid c2">${objectifs}${comptes}</div><div class="dgrid c1">${tx}</div></div>`;
+  $('#main').innerHTML = `<div class="dash">${dashTop(mk)}${kc}<div class="dgrid a">${patri}${repart}</div><div class="dgrid b">${vs}${cats}${contrib}</div><div class="dgrid c2">${objectifs}${comptes}</div><div class="dgrid c1">${tx}</div></div>`;
 }
 
 /* ---------- Comptes ---------- */
@@ -1465,7 +1495,7 @@ function renderEpargne(){
       </table></div>` : '<div class="empty">Aucun versement enregistré. Touchez « Ajouter un versement ».</div>'}</div></section>`;
 }
 
-/* ---------- Projets liés à l'épargne ---------- */
+/* ---------- Projets : financement par l'épargne ou par un compte, chantier, simulateur ---------- */
 const PROJ_RE = /voiture|véhicule|vehicule|automobile|\bauto\b|4x4/i;
 function projOrder(){
   return state.projects.map((p,i)=>({p, k: p.prio>0 ? p.prio : (PROJ_RE.test(p.title) ? 0.5 : 1000+i)})).sort((a,b)=>a.k-b.k).map(x=>x.p);
@@ -1475,15 +1505,27 @@ function avgSaving(mk){
   const ser = epargneSeries().filter(s=>s.mois<=mk && s.contrib.both>0).slice(-3);
   return ser.length ? sum(ser,s=>s.contrib.both)/ser.length : 0;
 }
-/* L'épargne commune cumulée finance les projets dans l'ordre de priorité. */
-function projFunding(mk){
-  const P0 = Math.max(0, cumulAt(mk).both), avg = avgSaving(mk), out = {};
+function accAvgIn(a, mk){
+  const by = {}; (a.moves||[]).forEach(x=>{ if(x.amount>0 && x.date && x.date.slice(0,7)<=mk){ const k = x.date.slice(0,7); by[k] = (by[k]||0)+x.amount; } });
+  const ks = Object.keys(by).sort().slice(-3); return ks.length ? sum(ks,k=>by[k])/ks.length : 0;
+}
+function etaFrom(mk, remaining, perMonth){
+  if(remaining<=0 || perMonth<=0) return null;
+  let k = mk; for(let n=Math.min(600,Math.ceil(remaining/perMonth)); n>0; n--) k = nextMois(k); return k;
+}
+/* L'épargne commune finance les projets dans l'ordre de priorité. Un projet lié à un compte est financé par le solde de ce compte. */
+function projFunding(mk, opts){
+  const P0 = Math.max(0, cumulAt(mk).both), avg = (opts && opts.monthly!=null) ? opts.monthly : avgSaving(mk), out = {};
   let pool = P0, need = 0;
   projOrder().forEach((p,i)=>{
-    const t = projTarget(p), f = Math.min(pool, t); pool -= f; need += t;
-    let eta = null;
-    if(t>0 && need>P0 && avg>0){ let k = mk; for(let n=Math.min(600,Math.ceil((need-P0)/avg)); n>0; n--) k = nextMois(k); eta = k; }
-    out[p.id] = {rank:i+1, target:t, funded:f, pct:t>0?Math.round(f/t*100):0, eta};
+    const t = projTarget(p), acc = p.acc ? state.accounts.find(a=>a.id===p.acc) : null;
+    if(acc){
+      const bal = Math.max(0, accBal(acc, mk+'-31')), f = Math.min(bal, t);
+      out[p.id] = {rank:i+1, target:t, funded:f, pct:t>0?Math.round(f/t*100):0, eta:t>0?etaFrom(mk, t-f, accAvgIn(acc,mk)):null, source:'compte', accName:acc.name};
+      return;
+    }
+    const f = Math.min(pool, t); pool -= f; need += t;
+    out[p.id] = {rank:i+1, target:t, funded:f, pct:t>0?Math.round(f/t*100):0, eta:(t>0 && need>P0 && avg>0)?etaFrom(mk, need-P0, avg):null, source:'épargne'};
   });
   return out;
 }
@@ -1492,48 +1534,211 @@ function moveProject(id, d){
   const ord = projOrder(), i = ord.findIndex(p=>p.id===id), j = i+d; if(i<0||j<0||j>=ord.length) return;
   [ord[i],ord[j]] = [ord[j],ord[i]]; ord.forEach((p,k)=>{ p.prio = k+1; }); persist(); render();
 }
-const etaText = f => f.target<=0 ? 'Ajoutez un budget pour suivre ce projet' : f.pct>=100 ? 'Financé par l’épargne' : f.eta ? 'Financé vers '+monthLong(f.eta) : 'Aucun versement récent pour estimer la date';
+const etaText = f => f.target<=0 ? 'Ajoutez un budget pour suivre ce projet' : f.pct>=100 ? (f.source==='compte'?'Financé par le compte « '+f.accName+' »':'Financé par l’épargne') : f.eta ? 'Financé vers '+monthLong(f.eta)+(f.source==='compte'?' (compte « '+f.accName+' »)':'') : 'Pas assez de versements récents pour estimer une date';
+const CHANTIER_PHASES = ['Terrain et fondations','Gros œuvre (murs, dalles)','Toiture','Plomberie et électricité','Portes et fenêtres','Carrelage et peinture','Finitions et clôture'];
+const ST = {'':{l:'Pas commencé', c:'ns'}, enc:{l:'En cours', c:'progress'}, ok:{l:'Terminé', c:'done'}};
 function projFields(p, first){
   return [{id:'t',label:'Nom du projet',value:p?p.title:'',placeholder:'Ex. Voiture, Maison, Vacances 2027',required:true},
-    {id:'bud',label:'Budget estimé (F)',type:'number',value:p?(p.budget||''):'',help:'Utilisé quand le projet n’a pas encore de lignes de budget. Sinon, le total des lignes compte.'},
+    {id:'k',label:'Type',type:'select',value:p?(p.kind||''):'',options:[{v:'',l:'Projet (lignes de budget)'},{v:'chantier',l:'Chantier : phases, payé et reste à payer'}]},
+    {id:'bud',label:'Budget estimé (F)',type:'number',value:p?(p.budget||''):'',help:'Utilisé tant que le projet n’a pas de lignes de budget. Sinon, le total des lignes compte.'},
+    {id:'ac',label:'Financé par',type:'select',value:p?(p.acc||''):'',options:[{v:'',l:'L’épargne commune (par priorité)'}].concat(state.accounts.map(a=>({v:a.id,l:'Le compte « '+a.name+' » ('+fmtN(accBal(a))+' F)'})))},
     {id:'pr',label:'Priorité',type:'select',value:first?'1':'0',options:[{v:'0',l:'Selon le classement'},{v:'1',l:'Prioritaire : financé en premier'}]},
     {id:'d',label:'Échéance (facultatif)',type:'month',value:p?p.target:''}];
 }
 function addProject(){
   const m = formModal({title:'Nouveau projet', fields:projFields(null,false), submit:'Créer', onSubmit:v=>{
     if(!v.t.trim()){ toast('Donnez un nom au projet.', true); return false; }
-    const p = {id:'p'+uid(), title:v.t.trim(), target:v.d||'', budget:parseFloat(v.bud)||0, prio:0, img:pendImg.val||'', items:[]};
+    const p = {id:'p'+uid(), title:v.t.trim(), target:v.d||'', budget:parseFloat(v.bud)||0, prio:0, kind:v.k, acc:v.ac, img:pendImg.val||'', items:[]};
+    if(v.k==='chantier') p.items = CHANTIER_PHASES.map(l=>({id:'i'+uid(), label:l, amount:0, checked:false, paid:0, st:''}));
     state.projects.push(p); if(v.pr==='1') makeFirst(p); persist(); render(); toast('Projet créé'); }});
   attachImage(m, '');
 }
 function editProject(id){
   const p = state.projects.find(x=>x.id===id);
   const m = formModal({title:'Modifier le projet', fields:projFields(p, projOrder()[0]===p), onSubmit:v=>{
-    p.title = v.t.trim()||p.title; p.target = v.d||''; p.budget = parseFloat(v.bud)||0; if(pendImg.val!==null) p.img = pendImg.val;
+    p.title = v.t.trim()||p.title; p.target = v.d||''; p.budget = parseFloat(v.bud)||0; p.kind = v.k; p.acc = v.ac; if(pendImg.val!==null) p.img = pendImg.val;
     if(v.pr==='1' && projOrder()[0]!==p) makeFirst(p); persist(); render(); toast('Enregistré'); }});
   attachImage(m, p.img);
 }
+function editItem(pid,iid){
+  const i = state.projects.find(x=>x.id===pid).items.find(x=>x.id===iid);
+  formModal({title:'Modifier la ligne', fields:[{id:'l',label:'Libellé',value:i.label},{id:'a',label:'Budget de la ligne (F)',type:'number',value:i.amount},
+    {id:'p',label:'Déjà payé (F)',type:'number',value:i.paid||0},{id:'s',label:'Avancement',type:'select',value:i.st||'',options:[{v:'',l:'Pas commencé'},{v:'enc',l:'En cours'},{v:'ok',l:'Terminé'}]}],
+    onSubmit:v=>{ i.label = v.l.trim()||i.label; i.amount = parseFloat(v.a)||0; i.paid = Math.max(0,parseFloat(v.p)||0); i.st = v.s; persist(); render(); toast('Enregistré'); }});
+}
+function addItem(ev, pid){
+  ev.preventDefault();
+  const l = $('#nl-'+pid).value.trim(), a = parseFloat($('#na-'+pid).value)||0;
+  if(!l){ toast('Indiquez un libellé.', true); return false; }
+  state.projects.find(x=>x.id===pid).items.push({id:'i'+uid(), label:l, amount:a, checked:false, paid:0, st:''}); persist(); render(); return false;
+}
+function simHtml(monthly, mk){
+  const F = projFunding(mk, {monthly}), ord = projOrder();
+  if(!ord.length) return '<div class="empty">Créez un projet pour lancer une simulation.</div>';
+  const pool = ord.filter(p=>F[p.id].source==='épargne' && F[p.id].target>0 && F[p.id].pct<100);
+  const last = pool.map(p=>F[p.id].eta).filter(Boolean).sort().pop();
+  const head = !pool.length ? 'Tous les projets financés par l’épargne sont déjà couverts.' : monthly<=0 ? 'Avec 0 F par mois, aucun projet supplémentaire n’est financé.' : last ? 'Tous les projets seront financés vers <b>'+monthLong(last)+'</b>.' : '';
+  return `<div class="help" style="margin:0 0 8px">${head}</div>` + ord.map(p=>{ const f = F[p.id];
+    const txt = f.target<=0 ? 'Pas de budget' : f.pct>=100 ? 'Déjà financé' : f.eta ? 'Financé vers '+monthLong(f.eta) : (f.source==='compte'?'Selon les versements du compte':'Aucune date possible');
+    return `<div class="simrow"><span class="rk ${f.rank===1?'first':''}">${f.rank}</span><b>${esc(p.title)}</b><span class="num">${fmtN(f.funded)} / ${fmtN(f.target)} F</span><span class="simeta">${txt}</span></div>`; }).join('');
+}
+function simRun(v){ const m = Math.max(0, parseFloat(v)||0); ui.sim = m; const el = $('#simout'); if(el) el.innerHTML = simHtml(m, pickMonth()||todayKey()); }
+function simStep(d){ const i = $('#simIn'); const v = Math.max(0, (parseFloat(i.value)||0)+d); i.value = v; simRun(v); }
 function renderProjets(){
   const mk = pickMonth()||todayKey(), F = projFunding(mk), ord = projOrder(), pool = cumulAt(mk).both, avg = avgSaving(mk);
   const done = p => sum(p.items.filter(i=>i.checked),i=>i.amount);
-  const summary = `<section class="panel"><div class="panel-head"><div><h2>Épargne affectée aux projets</h2><div class="sub">Votre épargne commune (${fmt(pool)}${avg>0?', environ '+fmt(avg)+' par mois':''}) finance les projets dans l’ordre de priorité.</div></div>
+  const summary = `<section class="panel"><div class="panel-head"><div><h2>Financement des projets</h2><div class="sub">Votre épargne commune (${fmt(pool)}${avg>0?', environ '+fmt(avg)+' par mois':''}) finance les projets dans l’ordre de priorité. Un projet lié à un compte utilise le solde de ce compte.</div></div>
     <button class="btn" onclick="addProject()">Nouveau projet</button></div><div class="panel-body">
     ${ord.length ? ord.map(p=>{ const f = F[p.id]; return `<div class="prow"><span class="rk ${f.rank===1?'first':''}">${f.rank}</span>
       ${p.img?`<img class="gimg" src="${p.img}" alt="">`:''}<div class="pr-b"><div class="gt"><b>${esc(p.title)}</b><span class="num">${f.pct} %</span></div>
       <div class="bar"><i class="${f.pct>=100?'ok':''}" style="width:${f.pct}%"></i></div>
       <div class="help" style="margin:5px 0 0">${fmtN(f.funded)} / ${fmtN(f.target)} F · ${etaText(f)}</div></div></div>`; }).join('') : '<div class="empty">Aucun projet pour le moment. Créez « Voiture », « Maison »… pour les suivre.</div>'}</div></section>`;
-  $('#main').innerHTML = summary + ord.map((p,idx)=>{
-    const f = F[p.id], d = done(p), t = sum(p.items,i=>i.amount);
-    return `<section class="panel"><div class="panel-head"><div><h2><span class="rk ${idx===0?'first':''}">${f.rank}</span> ${esc(p.title)}${idx===0?' <span class="prio">Prioritaire</span>':''}</h2><div class="sub">${p.target?'Échéance '+monthLong(p.target)+' – ':''}${fmt(f.funded)} financés par l’épargne sur ${fmt(f.target)} (${f.pct} %)</div></div>
+  const simV = Math.round(ui.sim!=null ? ui.sim : avg);
+  const sim = ord.length ? `<section class="panel"><div class="panel-head"><div><h2>Simulateur « et si »</h2><div class="sub">Changez le montant épargné chaque mois : les dates de financement se recalculent.</div></div></div><div class="panel-body">
+    <div class="simctl"><button class="btn secondary sm" onclick="simStep(-250000)">− 250 000</button><input id="simIn" type="number" inputmode="decimal" min="0" step="50000" value="${simV}" oninput="simRun(this.value)" aria-label="Épargne commune par mois (F)"><span>F par mois</span><button class="btn secondary sm" onclick="simStep(250000)">+ 250 000</button></div>
+    <div id="simout">${simHtml(simV, mk)}</div></div></section>` : '';
+  $('#main').innerHTML = summary + sim + ord.map((p,idx)=>{
+    const f = F[p.id], d = done(p), t = sum(p.items,i=>i.amount), ch = p.kind==='chantier';
+    const paid = sum(p.items,i=>i.paid||0), phOk = p.items.filter(i=>i.st==='ok').length;
+    const stats = ch ? `<div class="chstats"><div><span>Budget total</span><b class="num">${fmtN(t||p.budget||0)} F</b></div><div><span>Déjà payé</span><b class="num pos">${fmtN(paid)} F</b></div><div><span>Reste à payer</span><b class="num ${Math.max(0,t-paid)>0?'':'pos'}">${fmtN(Math.max(0,t-paid))} F</b></div><div><span>Phases terminées</span><b class="num">${phOk} / ${p.items.length}</b></div></div>
+      <div class="bar" style="margin:-4px 0 14px"><i style="width:${t>0?Math.min(100,Math.round(paid/t*100)):0}%;background:var(--pos)"></i></div>` : '';
+    const itemHtml = i => { const pd = i.paid||0, rest = Math.max(0,i.amount-pd), pp = i.amount>0 ? Math.min(100,Math.round(pd/i.amount*100)) : 0, st = ST[i.st||'']||ST[''];
+      return `<div class="itw"><div class="it"><input type="checkbox" ${i.checked?'checked':''} onchange="toggleItem('${p.id}','${i.id}')" aria-label="Engagé : ${esc(i.label)}">
+        <button class="lb ${i.checked?'done':''}" onclick="editItem('${p.id}','${i.id}')" title="Modifier">${esc(i.label)}</button><span class="num">${fmt(i.amount)}</span>
+        <button class="btn danger sm icon" onclick="deleteItem('${p.id}','${i.id}')" aria-label="Supprimer ${esc(i.label)}">×</button></div>
+        ${(ch||pd>0||i.st)?`<div class="isub"><span class="pill ${st.c}">${st.l}</span><div class="bar"><i style="width:${pp}%;background:var(--pos)"></i></div><span class="num">Payé ${fmtN(pd)} · reste ${fmtN(rest)}</span></div>`:''}</div>`; };
+    return `<section class="panel"><div class="panel-head"><div><h2><span class="rk ${idx===0?'first':''}">${f.rank}</span> ${esc(p.title)}${idx===0?' <span class="prio">Prioritaire</span>':''}${ch?' <span class="prio">Chantier</span>':''}</h2><div class="sub">${p.target?'Échéance '+monthLong(p.target)+' – ':''}${fmt(f.funded)} financés sur ${fmt(f.target)} (${f.pct} %)</div></div>
       <div class="tools"><button class="btn secondary sm icon" onclick="moveProject('${p.id}',-1)" aria-label="Monter en priorité" ${idx===0?'disabled':''}>↑</button><button class="btn secondary sm icon" onclick="moveProject('${p.id}',1)" aria-label="Baisser en priorité" ${idx===ord.length-1?'disabled':''}>↓</button>
       <button class="btn secondary sm" onclick="editProject('${p.id}')">Modifier / photo</button><button class="btn danger sm" onclick="deleteProject('${p.id}')">Supprimer</button></div></div>
-      <div class="panel-body">${p.img?`<img class="pbanner" src="${p.img}" alt="">`:''}<div class="bar" style="margin-bottom:6px"><i class="${f.pct>=100?'ok':''}" style="width:${f.pct}%"></i></div>
-      <div class="help" style="margin:0 0 14px">${etaText(f)}${t>0?' · '+fmt(d)+' déjà engagés (lignes cochées)':''}</div>
-      <div class="items">${p.items.length ? p.items.map(i=>`<div class="it"><input type="checkbox" ${i.checked?'checked':''} onchange="toggleItem('${p.id}','${i.id}')" aria-label="Engagé : ${esc(i.label)}">
-        <button class="lb ${i.checked?'done':''}" onclick="editItem('${p.id}','${i.id}')" title="Modifier">${esc(i.label)}</button><span class="num">${fmt(i.amount)}</span>
-        <button class="btn danger sm icon" onclick="deleteItem('${p.id}','${i.id}')" aria-label="Supprimer ${esc(i.label)}">×</button></div>`).join('') : '<div class="empty" style="padding:14px 0">Aucune ligne de budget. Ajoutez la première ci-dessous.</div>'}</div>
-      <form class="additem" onsubmit="return addItem(event,'${p.id}')"><input type="text" placeholder="Nouvelle ligne de budget" id="nl-${p.id}" aria-label="Libellé"><input type="number" inputmode="decimal" placeholder="Montant" id="na-${p.id}" aria-label="Montant"><button class="btn secondary" type="submit">Ajouter</button></form></div></section>`;
+      <div class="panel-body">${p.img?`<img class="pbanner" src="${p.img}" alt="">`:''}${stats}<div class="bar" style="margin-bottom:6px"><i class="${f.pct>=100?'ok':''}" style="width:${f.pct}%"></i></div>
+      <div class="help" style="margin:0 0 14px">${etaText(f)}${!ch&&t>0?' · '+fmt(d)+' déjà engagés (lignes cochées)':''}</div>
+      <div class="items">${p.items.length ? p.items.map(itemHtml).join('') : '<div class="empty" style="padding:14px 0">Aucune ligne de budget. Ajoutez la première ci-dessous.</div>'}</div>
+      <form class="additem" onsubmit="return addItem(event,'${p.id}')"><input type="text" placeholder="${ch?'Nouvelle phase':'Nouvelle ligne de budget'}" id="nl-${p.id}" aria-label="Libellé"><input type="number" inputmode="decimal" placeholder="Montant" id="na-${p.id}" aria-label="Montant"><button class="btn secondary" type="submit">Ajouter</button></form></div></section>`;
   }).join('');
+}
+
+/* ---------- Alertes d'accueil ---------- */
+function alertsFor(mk){
+  const m = state.months.find(x=>x.mois===mk), out = []; if(!m) return out;
+  budgetRows(m).forEach(r=>{ if(r.b>0){ const p = r.s/r.b*100;
+    if(r.s>r.b) out.push({lvl:'over', t:`${r.label} : budget dépassé de ${fmt(r.s-r.b)} (budget ${fmt(r.b)})`});
+    else if(p>=100) out.push({lvl:'warn', t:`${r.label} : budget atteint (${fmt(r.b)})`});
+    else if(p>=80) out.push({lvl:'warn', t:`${r.label} : ${Math.round(p)} % du budget utilisé (${fmt(r.s)} sur ${fmt(r.b)})`}); } });
+  if(mk===todayKey()){ const now = new Date().getDate();
+    state.categories.chargesFixes.forEach(c=>{ if(c.day>0 && (c.rec>0||c.budget>0)){ const d = c.day-now;
+      if(d>=0 && d<=3) out.push({lvl:'due', t:`${c.label} à payer ${d===0?"aujourd'hui":d===1?'demain':'dans '+d+' jours'} (le ${c.day})${(c.rec||c.budget)?' · '+fmt(c.rec||c.budget):''}`}); } }); }
+  const o = {over:0, due:1, warn:2}; return out.sort((a,b)=>o[a.lvl]-o[b.lvl]);
+}
+function dashTop(mk){
+  const al = alertsFor(mk);
+  return `<div class="dtop"><div class="dacts"><button class="btn secondary sm" onclick="openReport()">Rapport mensuel</button><button class="btn secondary sm" onclick="setTab('bilan')">Bilan annuel</button><button class="btn secondary sm" onclick="openDueDays()">Échéances</button></div>
+    ${al.length ? `<section class="alerts" role="status" aria-label="Alertes">${al.map(a=>`<div class="al ${a.lvl}"><span class="ad"></span>${esc(a.t)}</div>`).join('')}</section>` : ''}</div>`;
+}
+function openDueDays(){
+  const rows = state.categories.chargesFixes;
+  const mo = openModal(`<h3>Échéances des charges fixes</h3><p class="sub">Indiquez le jour du mois où chaque charge est à payer. Un rappel apparaît à l’accueil 3 jours avant.</p>
+    <div class="fgrid">${rows.map(c=>`<div class="field"><label for="dd_${c.id}">${esc(c.label)}</label><input id="dd_${c.id}" data-id="${c.id}" type="number" min="1" max="31" inputmode="numeric" value="${c.day||''}" placeholder="Jour (1 à 31)"></div>`).join('')}</div>
+    <div class="actions"><button class="btn secondary" data-close>Annuler</button><button class="btn" id="ddSave">Enregistrer</button></div>`, {wide:true});
+  mo.q('#ddSave').onclick = ()=>{ mo.qa('input[data-id]').forEach(i=>{ const c = rows.find(x=>x.id===i.dataset.id); const d = Math.round(+i.value); c.day = (d>=1 && d<=31) ? d : 0; }); persist(); mo.close(); render(); toast('Échéances enregistrées'); };
+}
+
+/* ---------- Rapport mensuel (PDF par impression, Excel par CSV) ---------- */
+function reportData(mk){
+  const m = state.months.find(x=>x.mois===mk), em = eff(m), t = totalsFor(m);
+  const grp = g => state.categories[g].map(c=>({label:c.label, v:parseFloat(em[g][c.id])||0, b:c.budget||0})).filter(r=>r.v>0||r.b>0);
+  return {m, t, ent:grp('entreeAnnexe'), fix:grp('chargesFixes'), vari:grp('chargesVariables'),
+    ops:state.expenses.filter(e=>(e.date||'').startsWith(mk)).sort((a,b)=>(a.date||'').localeCompare(b.date||'')), F:projFunding(mk)};
+}
+function reportHtml(mk){
+  const d = reportData(mk), m = d.m, t = d.t;
+  const tbl = (rows, withB) => rows.length ? `<table>${rows.map(r=>`<tr><td>${esc(r.label)}</td>${withB?`<td class="r muted">${r.b?fmtN(r.b):''}</td>`:''}<td class="r">${fmtN(r.v)}</td></tr>`).join('')}</table>` : '<p class="muted">Aucune ligne.</p>';
+  return `<div class="rp"><div class="rp-h"><div><h1>Saleh Wealth</h1><p>Bilan de ${monthLong(mk)}</p></div><p class="muted">Édité le ${new Date().toLocaleDateString('fr-FR')}</p></div>
+    <div class="rp-k"><div><span>Revenus</span><b>${fmtN(t.revenus)} F</b></div><div><span>Charges</span><b>${fmtN(t.charges)} F</b></div><div><span>Épargne</span><b>${fmtN(t.epargne)} F</b></div><div><span>Reste</span><b class="${t.reste<0?'neg':''}">${fmtN(t.reste)} F</b></div></div>
+    <h2>Revenus</h2><table><tr><td>Salaire Nassim</td><td class="r">${fmtN(m.salaire.nassim||0)}</td></tr><tr><td>Salaire Roxane</td><td class="r">${fmtN(m.salaire.roxane||0)}</td></tr>${d.ent.map(r=>`<tr><td>${esc(r.label)}</td><td class="r">${fmtN(r.v)}</td></tr>`).join('')}</table>
+    <h2>Charges fixes <small>(budget · réel)</small></h2>${tbl(d.fix,true)}
+    <h2>Charges variables <small>(budget · réel)</small></h2>${tbl(d.vari,true)}
+    <h2>Épargne du mois</h2><table><tr><td>Nassim</td><td class="r">${fmtN(m.epargne.nassim||0)}</td></tr><tr><td>Roxane</td><td class="r">${fmtN(m.epargne.roxane||0)}</td></tr><tr><td>Épargne commune cumulée</td><td class="r">${fmtN(cumulAt(mk).both)}</td></tr></table>
+    <h2>Projets</h2>${state.projects.length ? `<table>${projOrder().map(p=>{ const f = d.F[p.id]; return `<tr><td>${f.rank}. ${esc(p.title)}</td><td class="r muted">${f.pct} %</td><td class="r">${fmtN(f.funded)} / ${fmtN(f.target)}</td></tr>`; }).join('')}</table>` : '<p class="muted">Aucun projet.</p>'}
+    <h2>Comptes</h2>${state.accounts.length ? `<table>${state.accounts.map(a=>`<tr><td>${esc(a.name)} <span class="muted">${esc(a.bank||'')}</span></td><td class="r">${fmtN(accBal(a,mk+'-31'))}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="r">${fmtN(accTotal(mk+'-31'))}</td></tr></table>` : '<p class="muted">Aucun compte enregistré.</p>'}
+    <h2>Opérations du mois (${d.ops.length})</h2>${d.ops.length ? `<table>${d.ops.slice(0,40).map(e=>`<tr><td class="muted">${fullDate(e.date)}</td><td>${esc(e.note||catLabel(e.group,e.cat))} <span class="muted">${esc(e.who||'')}</span></td><td class="r">${e.group==='entreeAnnexe'?'+':'−'} ${fmtN(e.amount)}</td></tr>`).join('')}</table>` : '<p class="muted">Aucune opération rapide enregistrée.</p>'}</div>`;
+}
+function reportCsv(mk){
+  const d = reportData(mk), m = d.m, t = d.t, R = [];
+  R.push(['Saleh Wealth – Bilan', monthLong(mk)], [], ['Synthèse'], ['Revenus', t.revenus], ['Charges', t.charges], ['Épargne', t.epargne], ['Reste', t.reste], [],
+    ['Revenus'], ['Salaire Nassim', m.salaire.nassim||0], ['Salaire Roxane', m.salaire.roxane||0]); d.ent.forEach(r=>R.push([r.label, r.v]));
+  R.push([], ['Charges fixes','Budget','Réel']); d.fix.forEach(r=>R.push([r.label, r.b, r.v]));
+  R.push([], ['Charges variables','Budget','Réel']); d.vari.forEach(r=>R.push([r.label, r.b, r.v]));
+  R.push([], ['Épargne'], ['Nassim', m.epargne.nassim||0], ['Roxane', m.epargne.roxane||0], ['Cumul commun', cumulAt(mk).both]);
+  R.push([], ['Projets','Rang','Financé','Budget','%']); projOrder().forEach(p=>{ const f = d.F[p.id]; R.push([p.title, f.rank, f.funded, f.target, f.pct]); });
+  R.push([], ['Comptes','Solde']); state.accounts.forEach(a=>R.push([a.name+(a.bank?' ('+a.bank+')':''), accBal(a,mk+'-31')])); R.push(['Total', accTotal(mk+'-31')]);
+  R.push([], ['Opérations','Date','Catégorie','Qui','Montant']); d.ops.forEach(e=>R.push([e.note||'', e.date, catLabel(e.group,e.cat), e.who||'', (e.group==='entreeAnnexe'?1:-1)*e.amount]));
+  return R;
+}
+function downloadCsv(rows, name){
+  const q = v => { const s = String(v==null?'':v); return /[;"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const csv = '﻿' + rows.map(r=>r.map(q).join(';')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'})); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function printHtml(html){
+  const d = document.createElement('div'); d.id = 'printArea'; d.innerHTML = html; document.body.appendChild(d);
+  const done = () => { d.remove(); window.removeEventListener('afterprint', done); }; window.addEventListener('afterprint', done);
+  setTimeout(()=>window.print(), 60);
+}
+function openReport(){
+  const ms = sortedMonths(); if(!ms.length) return;
+  let mk = pickMonth()||ms[ms.length-1].mois;
+  const mo = openModal(`<h3>Rapport mensuel</h3><div class="catrow" style="margin-bottom:12px"><select id="rpm" aria-label="Mois">${ms.slice().reverse().map(x=>`<option value="${x.mois}" ${x.mois===mk?'selected':''}>${monthLong(x.mois)}</option>`).join('')}</select>
+    <button class="btn" id="rpPrint">Imprimer / PDF</button><button class="btn secondary" id="rpCsv">Excel (.csv)</button></div>
+    <div class="rpbox" id="rpbox">${reportHtml(mk)}</div><div class="actions"><button class="btn secondary" data-close>Fermer</button></div>`, {wide:true});
+  mo.q('#rpm').onchange = e=>{ mk = e.target.value; mo.q('#rpbox').innerHTML = reportHtml(mk); };
+  mo.q('#rpPrint').onclick = ()=>printHtml(reportHtml(mk));
+  mo.q('#rpCsv').onclick = ()=>downloadCsv(reportCsv(mk), 'saleh-wealth-'+mk+'.csv');
+}
+
+/* ---------- Bilan annuel ---------- */
+function bilanYear(){
+  const ys = years(), cur = String(new Date().getFullYear());
+  return ui.year!=='all' && ys.includes(ui.year) ? ui.year : (ys.includes(cur) ? cur : ys[ys.length-1]);
+}
+function bilanData(yr){
+  const all = sortedMonths().filter(m=>m.mois.startsWith(yr)), rows = all.map(m=>({m, t:totalsFor(m)})).filter(r=>r.t.revenus>0||r.t.charges>0||r.t.epargne!==0);
+  const cats = {};
+  rows.forEach(r=>{ const em = eff(r.m); ['chargesFixes','chargesVariables'].forEach(g=>state.categories[g].forEach(c=>{ const v = parseFloat(em[g][c.id])||0; if(v>0) cats[g+c.id] = {label:c.label, v:(cats[g+c.id]?cats[g+c.id].v:0)+v}; })); });
+  return {rows, cats:Object.values(cats).sort((a,b)=>b.v-a.v)};
+}
+function renderBilan(){
+  const yr = bilanYear(), {rows, cats} = bilanData(yr);
+  if(!rows.length){ $('#main').innerHTML = `<div class="panel"><div class="empty">Aucune donnée pour ${yr}.</div></div>`; return; }
+  const S = k => sum(rows, r=>r.t[k]), rev = S('revenus'), chg = S('charges'), ep = S('epargne'), reste = S('reste');
+  const maxC = rows.reduce((a,r)=>r.t.charges>a.t.charges?r:a, rows[0]), maxE = rows.reduce((a,r)=>r.t.epargne>a.t.epargne?r:a, rows[0]);
+  const labels = rows.map(r=>MS[+r.m.mois.slice(5)-1].replace('.','')), tips = rows.map(r=>`${monthLong(r.m.mois)}\nRevenus : ${fmt(r.t.revenus)}\nCharges : ${fmt(r.t.charges)}\nÉpargne : ${fmt(r.t.epargne)}\nReste : ${fmt(r.t.reste)}`);
+  const totC = sum(cats,c=>c.v)||1;
+  $('#main').innerHTML = `<div class="dash">
+    <div class="kcards">
+      ${kcard('Revenus '+yr, rev, '#4FA3FF', 'wallet', `<div class="dl muted">${rows.length} mois saisis</div>`, '')}
+      ${kcard('Dépenses', chg, '#FB7185', 'card', `<div class="dl muted">${rev>0?Math.round(chg/rev*100)+' % des revenus':'–'}</div>`, '')}
+      ${kcard('Épargne', ep, '#34D399', 'coins', `<div class="dl muted">${rev>0?Math.round(ep/rev*100)+' % des revenus':'–'}</div>`, '')}
+      ${kcard('Reste', reste, '#A78BFA', 'pie', `<div class="dl muted">après charges et épargne</div>`, '')}
+    </div>
+    <div class="dgrid a"><section class="panel dc"><div class="panel-head"><h2>Mois par mois</h2><button class="btn secondary sm" onclick="exportBilan('${yr}')">Excel (.csv)</button></div><div class="panel-body">
+      ${chartSlot('bil', W=>barsChart(W, labels, tips, [{name:'Revenus',color:'#2F8CFF',values:rows.map(r=>r.t.revenus)},{name:'Dépenses',color:'#F472B6',values:rows.map(r=>r.t.charges)},{name:'Épargne',color:'#34D399',values:rows.map(r=>r.t.epargne)}]))}</div></section>
+      <section class="panel dc"><div class="panel-head"><h2>À retenir</h2></div><div class="panel-body">
+        <div class="fact"><span>Taux d’épargne</span><b>${rev>0?Math.round(ep/rev*100)+' %':'–'}</b></div>
+        <div class="fact"><span>Mois le plus chargé</span><b>${monthLong(maxC.m.mois)} · ${fmtN(maxC.t.charges)} F</b></div>
+        <div class="fact"><span>Meilleur mois d’épargne</span><b>${monthLong(maxE.m.mois)} · ${fmtN(maxE.t.epargne)} F</b></div>
+        <div class="fact"><span>Dépense moyenne par mois</span><b>${fmtN(chg/rows.length)} F</b></div></div></section></div>
+    <div class="dgrid c2 bil2"><section class="panel dc"><div class="panel-head"><h2>Ce qui a le plus pesé</h2><span class="sub">${yr}</span></div><div class="panel-body">
+      ${cats.length ? cats.slice(0,8).map((c,i)=>{ const p = c.v/totC*100; return `<div class="cr wide"><span class="nm">${esc(c.label)}</span><div class="bar"><i style="width:${p.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></i></div><span class="pc num">${fmtN(c.v)} F · ${Math.round(p)} %</span></div>`; }).join('') : '<div class="empty">Aucune charge.</div>'}</div></section>
+      <section class="panel dc"><div class="panel-head"><h2>Détail mensuel</h2></div><div class="panel-body tight"><div class="tbl"><table class="bt"><thead><tr><th>Mois</th><th class="r">Revenus</th><th class="r">Charges</th><th class="r">Épargne</th><th class="r">Reste</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${MS[+r.m.mois.slice(5)-1]}</td><td class="r num">${fmtN(r.t.revenus)}</td><td class="r num">${fmtN(r.t.charges)}</td><td class="r num">${fmtN(r.t.epargne)}</td><td class="r num ${r.t.reste<0?'neg':''}">${fmtN(r.t.reste)}</td></tr>`).join('')}
+      <tr class="tot"><td>Total</td><td class="r num">${fmtN(rev)}</td><td class="r num">${fmtN(chg)}</td><td class="r num">${fmtN(ep)}</td><td class="r num ${reste<0?'neg':''}">${fmtN(reste)}</td></tr></tbody></table></div></div></section></div></div>`;
+}
+function exportBilan(yr){
+  const {rows, cats} = bilanData(yr), R = [['Saleh Wealth – Bilan annuel', yr], [], ['Mois','Revenus','Charges','Épargne','Reste']];
+  rows.forEach(r=>R.push([monthLong(r.m.mois), r.t.revenus, r.t.charges, r.t.epargne, r.t.reste]));
+  R.push(['Total', sum(rows,r=>r.t.revenus), sum(rows,r=>r.t.charges), sum(rows,r=>r.t.epargne), sum(rows,r=>r.t.reste)], [], ['Charges par poste','Total']); cats.forEach(c=>R.push([c.label, c.v]));
+  downloadCsv(R, 'saleh-wealth-bilan-'+yr+'.csv');
 }
 
 /* ---------- Page : orchestration ---------- */
@@ -1554,7 +1759,7 @@ function render(){
   const ys = years(); if(ui.year!=='all' && !ys.includes(ui.year)) ui.year = ys.includes(String(new Date().getFullYear())) ? String(new Date().getFullYear()) : (ys[ys.length-1]||'all');
   $('#yearSel').innerHTML = `<option value="all">Toutes les années</option>` + ys.map(y=>`<option value="${y}" ${ui.year===y?'selected':''}>${y}</option>`).join('');
   $('#yearSel').value = ui.year;
-  ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, comptes:renderComptes, projets:renderProjets})[ui.tab]();
+  ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, comptes:renderComptes, projets:renderProjets, bilan:renderBilan})[ui.tab]();
   const banner = `<div class="banner" id="syncBanner" role="status"><span><b>Données non partagées.</b> Elles sont enregistrées uniquement sur cet appareil. Connectez-vous pour que Nassim et Roxane voient les mêmes informations.</span><button class="btn secondary sm" onclick="openLogin()">Se connecter</button></div>`;
   $('#main').insertAdjacentHTML('afterbegin', banner);
   renderBanner(); mountCharts(); renderChrome();
@@ -1936,7 +2141,7 @@ function boot(){
   const navHtml = '<div class="nsec">Gestion financière</div>' + TABS.map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${NL[k]||l}</span></button>`).join('')
     + `<div class="nsec">Paramètres</div><button onclick="openCategoryManager()">${dic('tag')}<span>Catégories</span></button><button onclick="openSettings()">${dic('cog')}<span>Paramètres</span></button>`;
   $('#nav').innerHTML = navHtml;
-  const tbs = TABS.map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${l}</span></button>`);
+  const tbs = TABS.filter(t=>t[0]!=='bilan').map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${l}</span></button>`);
   tbs.splice(2,0,'<button class="plus" onclick="openQuickAdd()" aria-label="Nouvelle opération"><span class="fab">+</span></button>');
   $('#tabbar').innerHTML = tbs.join('');
   document.querySelectorAll('img.logo-img').forEach(i=>{ i.src = LOGO; });
