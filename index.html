@@ -374,6 +374,7 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
    ============================================================ */
 const CONFIG = {
   SYNC_URL: 'https://finance-saleh-default-rtdb.europe-west1.firebasedatabase.app',
+  AUTH_DOMAIN: 'finance-saleh.firebaseapp.com', PROJECT_ID: 'finance-saleh',
   API_KEY: 'AIzaSyAy9vdAsgdUM5OPsCT7QhNKB8GX3O5UuOA'   /* Clé API Web Firebase (Paramètres du projet, onglet Général). Elle n'est pas secrète. */
 };
 
@@ -572,6 +573,22 @@ async function signIn(email, password){
   const r = await fbPost('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword', {email, password, returnSecureToken:true});
   auth = {email:r.email||email, idToken:r.idToken, refreshToken:r.refreshToken, exp:Date.now()+(+r.expiresIn||3600)*1000}; saveAuth();
 }
+function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>ko(new Error('load')); document.head.appendChild(s); }); }
+async function googleSignIn(){
+  const V = '10.12.2';
+  if(!window.firebase){ await loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-app-compat.js'); await loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-auth-compat.js'); }
+  if(!firebase.apps.length) firebase.initializeApp({apiKey:CONFIG.API_KEY, authDomain:CONFIG.AUTH_DOMAIN, projectId:CONFIG.PROJECT_ID});
+  const r = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  const tr = await r.user.getIdTokenResult();
+  auth = {email:r.user.email, idToken:tr.token, refreshToken:r.user.refreshToken, exp:Date.parse(tr.expirationTime)||Date.now()+3500000}; saveAuth();
+}
+const GOOGLE_ERR = {
+  'auth/unauthorized-domain':"Ce site n'est pas autorisé dans Firebase : ajoutez roxanehunt-cpu.github.io dans Authentication, Paramètres, Domaines autorisés.",
+  'auth/operation-not-allowed':"La connexion Google n'est pas activée dans Firebase (Authentication, Méthode de connexion).",
+  'auth/popup-blocked':"La fenêtre Google a été bloquée. Autorisez les fenêtres pop-up pour ce site, ou utilisez l'e-mail.",
+  'auth/popup-closed-by-user':"Connexion Google annulée.", 'auth/cancelled-popup-request':"Connexion Google annulée.",
+  'auth/network-request-failed':"Connexion impossible. Vérifiez le réseau."
+};
 function signOut(){ auth = null; saveAuth(); setStatus('local','Déconnecté : les données restent sur cet appareil.'); render(); }
 async function getToken(){
   if(!auth) return null;
@@ -1365,12 +1382,19 @@ function openLogin(){
   if(document.getElementById('loginForm')) return;
   if(!keyOk()){ toast('La synchronisation doit encore être configurée (clé API manquante).', true); return; }
   const mo = openModal(`<h3>Connexion</h3><p class="sub">Une seule fois par appareil : la session reste ouverte ensuite.</p>
+    <button type="button" class="btn secondary lg" id="l_google">Continuer avec Google</button>
+    <div class="help" style="text-align:center;margin:12px 0">ou avec un e-mail et un mot de passe</div>
     <form id="loginForm" novalidate>
       <div class="field"><label for="l_mail">E-mail</label><input id="l_mail" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
       <div class="field"><label for="l_pw">Mot de passe</label><input id="l_pw" type="password" autocomplete="current-password"></div>
       <div class="help" id="l_err" role="alert" style="color:var(--neg);min-height:18px"></div>
       <div class="actions"><button type="button" class="btn secondary" data-close>Plus tard</button><button type="submit" class="btn" id="l_go">Se connecter</button></div>
     </form>`);
+  mo.q('#l_google').onclick = async ()=>{
+    const err = mo.q('#l_err'), b = mo.q('#l_google'); err.textContent = ''; b.disabled = true; b.textContent = 'Connexion Google…';
+    try{ await googleSignIn(); mo.close(); toast('Connecté'); renderChrome(); await sync(); render(); }
+    catch(ex){ b.disabled = false; b.textContent = 'Continuer avec Google'; err.textContent = GOOGLE_ERR[ex.code] || (ex.message==='load' ? 'Impossible de charger Google. Vérifiez le réseau.' : 'Erreur Google : '+(ex.code||ex.message||ex)); }
+  };
   mo.q('#l_mail').focus();
   mo.q('#loginForm').onsubmit = async e=>{
     e.preventDefault(); const mail = mo.q('#l_mail').value.trim(), pw = mo.q('#l_pw').value, err = mo.q('#l_err');
