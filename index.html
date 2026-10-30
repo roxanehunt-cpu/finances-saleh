@@ -448,6 +448,48 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
 .prow:first-child{border-top:0}
 .pr-b{flex:1; min-width:0}
 .tools .btn[disabled]{opacity:.35; cursor:default}
+
+/* ---------- Écran de connexion ---------- */
+.overlay.fullov{padding:0; background:#07111A; align-items:stretch}
+.modal.full{max-width:none; width:100%; min-height:100vh; border:0; border-radius:0; padding:0; background:none; display:grid; grid-template-columns:1fr 1fr}
+.lg-left{position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:radial-gradient(ellipse at 50% 38%,#10263A 0%,#0B1824 55%,#07111A 100%); color:#EAF3F4}
+.lg-arcs{position:absolute; top:0; left:0; width:100%; height:48%; pointer-events:none}
+.lg-brand{position:relative; z-index:1; text-align:center; margin-top:-6vh}
+.lg-logo{width:96px; height:96px; border-radius:24px; display:block; margin:0 auto 22px; box-shadow:0 0 60px rgba(79,163,255,.35)}
+.lg-word{font-size:44px; font-weight:500; letter-spacing:.2em; line-height:1; display:flex; flex-direction:column; gap:6px; padding-left:.2em}
+.lg-word span{font-size:19px; letter-spacing:.46em; color:#96CAD3; padding-left:.46em}
+.lg-bar{display:block; width:56px; height:3px; border-radius:2px; background:#4FA3FF; margin:22px auto 16px}
+.lg-tag{font-size:12px; letter-spacing:.34em; text-transform:uppercase; color:#8EA3B0}
+.lg-sky{position:absolute; left:0; right:0; bottom:64px; width:100%; height:26vh; max-height:230px}
+.lg-foot{position:absolute; bottom:22px; left:0; right:0; text-align:center; font-size:11px; letter-spacing:.2em; color:#6F8799; display:flex; flex-direction:column; gap:6px}
+.lg-foot b{color:#4FA3FF; padding:0 6px}
+.lg-foot em{font-style:italic; letter-spacing:.04em; color:#4FA3FF; font-size:11.5px}
+.lg-right{--ink:#0B1824; --ink-2:#41566A; --ink-3:#6B7F90; --field:#fff; --line:#D5DEE5; --line-strong:#B8C6D1; --surface:#fff; --surface-2:#F1F5F8; --hover:#E8EFF4; --neg:#C0303D; background:#fff; color:#0B1824; display:flex; align-items:center; justify-content:center; padding:40px 24px; min-height:100vh}
+.lg-form{width:100%; max-width:430px}
+.lg-form h3{font-size:30px; font-weight:700; letter-spacing:-.02em; margin:0 0 8px; color:#0B1824}
+.lg-sub{margin:0 0 26px; color:#5B6F80; font-size:15px}
+.lg-form .btn.lg{width:100%; height:48px; font-size:15px; justify-content:center}
+.lg-form .btn.secondary{background:#fff; border:1px solid #CBD6DF; color:#0B1824}
+.lg-form .btn.secondary:hover{background:#F1F5F8}
+.lg-form .btn:not(.secondary){background:#437B98; color:#fff; border:0}
+.lg-form .btn:not(.secondary):hover{background:#376A85}
+.lg-form .field label{color:#2A3D4E; font-weight:550}
+.lg-form .field input{width:100%; background:#fff; color:#0B1824; border:1px solid #CBD6DF; height:46px}
+.lg-form .field input:focus{border-color:#437B98; outline:2px solid rgba(67,123,152,.25); outline-offset:0}
+.lg-or{display:flex; align-items:center; gap:12px; margin:20px 0; color:#7A8D9C; font-size:13px}
+.lg-or:before,.lg-or:after{content:''; flex:1; height:1px; background:#DCE5EB}
+.lg-skip{display:block; margin:22px auto 0; background:none; border:0; color:#5B6F80; font-size:13px; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+@media (max-width:899px){
+  .modal.full{grid-template-columns:1fr; grid-template-rows:auto 1fr}
+  .lg-left{min-height:0; padding:34px 0 26px}
+  .lg-arcs,.lg-sky,.lg-foot{display:none}
+  .lg-brand{margin-top:0}
+  .lg-logo{width:64px; height:64px; border-radius:16px; margin-bottom:14px}
+  .lg-word{font-size:28px} .lg-word span{font-size:13px}
+  .lg-bar{margin:14px auto 10px} .lg-tag{font-size:10.5px}
+  .lg-right{min-height:0; align-items:flex-start; padding:30px 20px 40px}
+  .lg-form h3{font-size:25px}
+}
 </style>
 </head>
 <body>
@@ -880,8 +922,8 @@ function toast(msg, err){
   document.body.appendChild(t); setTimeout(()=>t.remove(), err?5000:3000);
 }
 function openModal(html, opts={}){
-  const ov = document.createElement('div'); ov.className = 'overlay';
-  ov.innerHTML = `<div class="modal ${opts.wide?'wide':''}" role="dialog" aria-modal="true">${html}</div>`;
+  const ov = document.createElement('div'); ov.className = 'overlay'+(opts.full?' fullov':'');
+  ov.innerHTML = `<div class="modal ${opts.wide?'wide':''} ${opts.full?'full':''}" role="dialog" aria-modal="true">${html}</div>`;
   document.body.appendChild(ov);
   const onKey = e=>{ if(e.key==='Escape' && !opts.locked){ const all=[...document.querySelectorAll('.overlay')]; if(all[all.length-1]===ov) close(); } };
   const close = ()=>{ ov.remove(); document.removeEventListener('keydown', onKey); if(opts.onClose) opts.onClose(); };
@@ -1744,15 +1786,35 @@ function pickUser(locked, after){
 function openLogin(){
   if(document.getElementById('loginForm')) return;
   if(!keyOk()){ toast('La synchronisation doit encore être configurée (clé API manquante).', true); return; }
-  const mo = openModal(`<div class="logincenter"><img class="loginlogo" src="${LOGO}" alt=""><h3>Saleh Wealth</h3><p class="sub">Connectez-vous pour retrouver vos finances. Une seule fois par appareil.</p></div>
-    <button type="button" class="btn secondary lg" id="l_google">Continuer avec Google</button>
-    <div class="help" style="text-align:center;margin:12px 0">ou avec un e-mail et un mot de passe</div>
-    <form id="loginForm" novalidate>
-      <div class="field"><label for="l_mail">E-mail</label><input id="l_mail" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
-      <div class="field"><label for="l_pw">Mot de passe</label><input id="l_pw" type="password" autocomplete="current-password"></div>
-      <div class="help" id="l_err" role="alert" style="color:var(--neg);min-height:18px"></div>
-      <div class="actions"><button type="button" class="btn secondary" data-close>Plus tard</button><button type="submit" class="btn" id="l_go">Se connecter</button></div>
-    </form>`);
+  const ARCS = `<svg class="lg-arcs" viewBox="0 0 832 430" preserveAspectRatio="xMidYMin slice" aria-hidden="true" fill="none">
+      <g stroke="#2C5F86" stroke-width="1.2" stroke-dasharray="3 5" opacity=".85">
+        <path d="M76 257 Q150 170 229 204"/><path d="M229 204 Q390 120 555 214"/><path d="M229 204 Q320 230 388 270"/><path d="M555 214 Q680 150 783 187"/><path d="M555 214 Q660 215 728 277"/><path d="M76 257 Q100 330 159 388"/><path d="M728 277 Q700 350 652 402"/></g>
+      <g fill="#4FA3FF" opacity=".85"><circle cx="76" cy="257" r="3.5"/><circle cx="229" cy="204" r="3.5"/><circle cx="388" cy="270" r="3"/><circle cx="555" cy="214" r="3.5"/><circle cx="728" cy="277" r="3.5"/><circle cx="783" cy="187" r="3.5"/><circle cx="159" cy="388" r="3" opacity=".6"/><circle cx="652" cy="402" r="3" opacity=".6"/></g>
+      <g transform="translate(628 226) rotate(-18)" fill="#5E7C96" opacity=".9"><path d="M-14 0 L10 -3 L-2 -12 L3 -12 L20 -3 L26 -3 L26 3 L20 3 L3 12 L-2 12 L10 3 L-14 0Z"/></g></svg>`;
+  const SKY = `<svg class="lg-sky" viewBox="0 0 832 230" preserveAspectRatio="xMidYMax meet" aria-hidden="true" fill="none" stroke="#294B66" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M0 208 H832" stroke-dasharray="0"/><path d="M0 222 h40 M70 222 h40 M140 222 h40 M210 222 h40 M280 222 h40 M350 222 h40 M420 222 h40 M490 222 h40 M560 222 h40 M630 222 h40 M700 222 h40 M770 222 h40" opacity=".5"/>
+      <path d="M38 208 V120 L118 70 L198 120 V208"/><path d="M38 160 H198"/><rect x="58" y="128" width="22" height="22"/><rect x="108" y="128" width="22" height="22"/><rect x="156" y="128" width="22" height="22"/>
+      <rect x="58" y="176" width="22" height="32"/><rect x="108" y="172" width="22" height="22"/><rect x="156" y="172" width="22" height="22"/><rect x="104" y="96" width="28" height="14" stroke="#4FA3FF" opacity=".9"/>
+      <path d="M262 208 V190 Q262 182 270 180 L292 174 Q302 158 320 158 H352 Q368 158 378 172 L392 180 Q404 182 404 194 V208"/><path d="M308 176 H350 M286 176 L292 174"/><circle cx="294" cy="208" r="12" fill="#0B1824"/><circle cx="374" cy="208" r="12" fill="#0B1824"/><path d="M262 208 H282 M306 208 H362 M386 208 H404"/>
+      <g stroke="#4FA3FF" opacity=".9"><ellipse cx="472" cy="196" rx="28" ry="8"/><ellipse cx="472" cy="186" rx="28" ry="8"/><ellipse cx="472" cy="176" rx="28" ry="8"/><path d="M444 176 V196 M500 176 V196"/></g>
+      <ellipse cx="540" cy="198" rx="24" ry="7"/><ellipse cx="540" cy="189" rx="24" ry="7"/><path d="M516 189 V198 M564 189 V198"/><path d="M516 198 V208 M564 198 V208" opacity="0"/>
+      <rect x="620" y="170" width="22" height="38"/><rect x="652" y="144" width="22" height="64"/><rect x="684" y="112" width="22" height="96"/><rect x="716" y="80" width="22" height="128" stroke="#4FA3FF"/>
+      <path d="M616 150 L660 118 L690 132 L738 62" stroke="#4FA3FF" opacity=".9"/><path d="M724 62 H738 V76" stroke="#4FA3FF" opacity=".9"/></svg>`;
+  const mo = openModal(`<section class="lg-left">${ARCS}
+      <div class="lg-brand"><img class="lg-logo" src="${LOGO}" alt=""><div class="lg-word">SALEH<span>WEALTH</span></div><i class="lg-bar"></i><div class="lg-tag">Building wealth together</div></div>
+      ${SKY}<div class="lg-foot"><span>ÉPARGNE <b>•</b> PROJETS <b>•</b> PATRIMOINE</span><em>conçu par RH</em></div></section>
+    <section class="lg-right"><div class="lg-form">
+      <h3>Connexion</h3><p class="lg-sub">Accédez aux finances du foyer.</p>
+      <button type="button" class="btn secondary lg" id="l_google">Continuer avec Google</button>
+      <div class="lg-or"><span>ou</span></div>
+      <form id="loginForm" novalidate>
+        <div class="field"><label for="l_mail">Identifiant (e-mail)</label><input id="l_mail" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="prenom@exemple.com"></div>
+        <div class="field"><label for="l_pw">Mot de passe</label><input id="l_pw" type="password" autocomplete="current-password"></div>
+        <div class="help" id="l_err" role="alert" style="color:var(--neg);min-height:18px"></div>
+        <button type="submit" class="btn lg" id="l_go">Se connecter</button>
+      </form>
+      <button type="button" class="lg-skip" data-close>Continuer sans me connecter</button>
+    </div></section>`, {full:true});
   mo.q('#l_google').onclick = async ()=>{
     const err = mo.q('#l_err'), b = mo.q('#l_google'); err.textContent = ''; b.disabled = true; b.textContent = 'Connexion Google…';
     try{ await googleSignIn(); mo.close(); toast('Connecté'); renderChrome(); await sync(); render(); }
