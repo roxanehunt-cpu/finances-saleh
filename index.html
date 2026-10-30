@@ -263,6 +263,17 @@ pre{background:var(--field); border-radius:8px; padding:12px; overflow:auto; fon
 .toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--ink); color:#0B1020; padding:10px 16px; border-radius:8px; font-size:13.5px; font-weight:500; z-index:80; max-width:90vw}
 .toast.err{background:var(--danger-solid); color:#fff}
 
+/* Journal */
+.dayhead{display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-3); font-weight:500; padding:14px 0 4px}
+.dayhead:first-child{padding-top:0}
+.ex2{display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line)}
+.ex2 .ti{background:none; border:0; text-align:left; cursor:pointer; padding:0; min-width:0; color:inherit}
+.ex2 .ti b{font-weight:550; display:block}
+.ex2 .ti span{display:block; font-size:12.5px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.catbtn{width:100%; background:none; border:0; border-bottom:1px solid var(--line); text-align:left; cursor:pointer; color:inherit; border-radius:0}
+.catbtn.sel{background:var(--accent-soft)}
+.catbtn:last-child{border-bottom:0}
+
 /* Saisie rapide */
 .seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; background:var(--field); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px}
 .seg button{height:34px; border:0; border-radius:7px; background:transparent; color:var(--ink-3); font-weight:550; cursor:pointer}
@@ -433,7 +444,7 @@ const SEED_PROJECTS = [
      leurs données (la modification la plus récente gagne, élément par élément).
    ============================================================ */
 let state, lastHash = {}, currentUser = null;
-let ui = { tab:'synthese', year:'', statut:'all', expanded:null, month:null };
+let ui = { tab:'synthese', year:'', statut:'all', expanded:null, month:null, cat:'all' };
 
 function emptyGroup(group, cats){ const o={}; cats[group].forEach(c=>o[c.id]=0); return o; }
 function emptyMonth(mois){
@@ -614,7 +625,8 @@ function totalsFor(m){
   const totalEntree = sumG(m,'entreeAnnexe'), totalSalaire = (m.salaire.nassim||0)+(m.salaire.roxane||0);
   const totalCF = sumG(m,'chargesFixes'), totalCV = sumG(m,'chargesVariables');
   const revenus = totalSalaire + totalEntree, charges = totalCF + totalCV;
-  return {totalEntree, totalSalaire, totalCF, totalCV, revenus, charges, reste: revenus - charges};
+  const epargne = (m.epargne.nassim||0)+(m.epargne.roxane||0);
+  return {totalEntree, totalSalaire, totalCF, totalCV, revenus, charges, epargne, reste: revenus - charges - epargne};
 }
 /* Charges récurrentes */
 const GROUPS = ['entreeAnnexe','chargesFixes','chargesVariables'];
@@ -678,12 +690,13 @@ function pickMonth(){
    ============================================================ */
 const ICONS = {
   synthese:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  depenses:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
   charges:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
   epargne:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   projets:'<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>'
 };
-const TABS = [['synthese','Accueil'],['charges','Charges'],['epargne','Épargne'],['projets','Projets']];
-const TITLES = {synthese:'Accueil', charges:'Charges et revenus', epargne:'Épargne', projets:'Projets communs'};
+const TABS = [['synthese','Accueil'],['depenses','Dépenses'],['charges','Charges'],['epargne','Épargne'],['projets','Projets']];
+const TITLES = {synthese:'Accueil', depenses:'Journal des dépenses', charges:'Charges et revenus', epargne:'Épargne', projets:'Projets communs'};
 const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 
 function toast(msg, err){
@@ -867,11 +880,11 @@ function deleteExpense(id){
 
 function renderSynthese(){
   const ms = periodMonths(), T = ms.map(totalsFor);
-  const rev = sum(T,t=>t.revenus), chg = sum(T,t=>t.charges), reste = rev-chg;
+  const rev = sum(T,t=>t.revenus), chg = sum(T,t=>t.charges), reste = sum(T,t=>t.reste);
   const ser = epargneSeries(), last = ser[ser.length-1], toDate = cumulAt(todayKey());
   const all = sortedMonths(), mk = pickMonth(), idx = all.findIndex(x=>x.mois===mk), m = all[idx];
   const labels = ms.map(x=>ui.year==='all'?monthLabel(x.mois):MS[+x.mois.slice(5)-1]);
-  const tips = ms.map((x,i)=>`${monthLong(x.mois)}\nRevenus : ${fmt(T[i].revenus)}\nCharges : ${fmt(T[i].charges)}\nReste : ${fmt(T[i].reste)}`);
+  const tips = ms.map((x,i)=>`${monthLong(x.mois)}\nRevenus : ${fmt(T[i].revenus)}\nCharges : ${fmt(T[i].charges)}\nÉpargne : ${fmt(T[i].epargne)}\nReste : ${fmt(T[i].reste)}`);
   const serP = ser.filter(s=>ms.some(x=>x.mois===s.mois));
   const projFrom = serP.filter(s=>s.mois<=todayKey()).length;
   const lt = serP.map(s=>`${monthLong(s.mois)}\nCommune : ${fmt(s.cumul.both)}\nNassim : ${fmt(s.cumul.nassim)}\nRoxane : ${fmt(s.cumul.roxane)}`);
@@ -879,7 +892,7 @@ function renderSynthese(){
   let hero = '', insights = '', budgets = '';
   if(m){
     const tm = totalsFor(m), prev = idx>0 ? all[idx-1] : null, tp = prev ? totalsFor(prev) : null;
-    const used = tm.revenus>0 ? tm.charges/tm.revenus*100 : (tm.charges>0 ? 100 : 0), c = cls100(used);
+    const out = tm.charges + tm.epargne, used = tm.revenus>0 ? out/tm.revenus*100 : (out>0 ? 100 : 0), c = cls100(used);
     const epm = (m.epargne.nassim||0)+(m.epargne.roxane||0), taux = tm.revenus>0 ? epm/tm.revenus*100 : 0;
     const noData = tm.revenus===0 && tm.charges===0;
     hero = `<section class="hero">
@@ -888,9 +901,9 @@ function renderSynthese(){
         <button class="mnav" onclick="shiftMonth(1)" aria-label="Mois suivant" ${idx>=all.length-1?'disabled':''}>›</button>${pill(m.statut)}</div>
       <div class="hero-label">${noData?'Rien de saisi pour ce mois':tm.reste<0?'Dépassement ce mois-ci':'Il vous reste ce mois-ci'}</div>
       <div class="hero-num ${tm.reste<0?'neg':''}">${fmt(tm.reste)}</div>
-      <div class="hero-sub">${tm.revenus>0?'sur '+fmt(tm.revenus)+' de revenus':'Aucun revenu saisi'}</div>
+      <div class="hero-sub">${tm.revenus>0?'sur '+fmt(tm.revenus)+' de revenus, après charges et épargne':'Aucun revenu saisi'}</div>
       <div class="meter"><div class="bar"><i class="${c}" style="width:${Math.min(100,used).toFixed(1)}%"></i></div>
-        <div class="meter-cap"><span>${fmt(tm.charges)} de charges (${Math.round(used)} % des revenus)</span><span>Fixes ${fmt(tm.totalCF)} / variables ${fmt(tm.totalCV)}</span></div></div>
+        <div class="meter-cap"><span>${fmt(tm.charges)} de charges + ${fmt(tm.epargne)} d'épargne (${Math.round(used)} % des revenus)</span><span>Fixes ${fmt(tm.totalCF)} / variables ${fmt(tm.totalCV)}</span></div></div>
       <div class="hero-actions"><button class="btn" onclick="openQuickAdd()">Ajouter une opération</button>
         <button class="btn secondary" onclick="openMonthForm('${m.mois}')">Modifier le mois</button>
         <button class="btn secondary" onclick="goDetail('${m.mois}')">Voir le détail</button></div>
@@ -923,7 +936,7 @@ function renderSynthese(){
     <section class="panel"><div class="panel-head"><div><h2>Bilan de la période</h2><div class="sub">${periodLabel()}</div></div></div><div class="kpis" style="margin-top:8px">
       <div class="kpi"><div class="label">Revenus</div><div class="value">${fmt(rev)}</div></div>
       <div class="kpi"><div class="label">Charges</div><div class="value">${fmt(chg)}</div></div>
-      <div class="kpi"><div class="label">Reste</div><div class="value ${reste<0?'neg':'pos'}">${fmt(reste)}</div></div>
+      <div class="kpi"><div class="label">Reste après épargne</div><div class="value ${reste<0?'neg':'pos'}">${fmt(reste)}</div></div>
       <div class="kpi"><div class="label">Épargne commune à ce jour</div><div class="value">${fmt(toDate.both)}</div><div class="hint">Prévision ${last?monthLabel(last.mois):''} : ${fmt(last?last.cumul.both:0)}</div></div>
     </div></section>
     ${panel('Revenus et charges par mois', ms.length ? chartSlot('rc', W=>barsChart(W, labels, tips, [{name:'Revenus',color:C_REV,values:T.map(t=>t.revenus)},{name:'Charges',color:C_CHG,values:T.map(t=>t.charges)}])) : '<div class="empty">Aucune donnée.</div>')}
@@ -938,18 +951,18 @@ function renderCharges(){
   const T = rows.map(totalsFor);
   const donut = m ? panel('Répartition des charges fixes', chartSlot('dn', W=>donutChart(W, state.categories.chargesFixes.map(c=>({label:c.label,value:eff(m).chargesFixes[c.id]||0})))), monthSelect(mk)) : '';
   const table = rows.length ? `<div class="tablewrap"><table>
-    <thead><tr><th>Mois</th><th class="num">Salaires</th><th class="num">Entrées annexes</th><th class="num">Charges fixes</th><th class="num">Charges variables</th><th class="num">Reste</th><th>Statut</th><th></th></tr></thead>
+    <thead><tr><th>Mois</th><th class="num">Salaires</th><th class="num">Entrées annexes</th><th class="num">Charges fixes</th><th class="num">Charges variables</th><th class="num">Épargne</th><th class="num">Reste après épargne</th><th>Statut</th><th></th></tr></thead>
     <tbody>${rows.map((x,i)=>{
       const t = T[i], open = ui.expanded===x.mois;
       return `<tr class="row ${open?'open':''}" onclick="toggleExpand('${x.mois}')">
         <td><button class="rowbtn" aria-expanded="${open}"><span class="chev">›</span>${monthLabel(x.mois)}</button></td>
         <td class="num">${fmt(t.totalSalaire)}</td><td class="num ${t.totalEntree?'':'zero'}">${fmt(t.totalEntree)}</td>
         <td class="num">${fmt(t.totalCF)}</td><td class="num ${t.totalCV?'':'zero'}">${fmt(t.totalCV)}</td>
-        <td class="num">${signed(t.reste)}</td><td>${pill(x.statut)}</td>
+        <td class="num ${t.epargne?'':'zero'}">${fmt(t.epargne)}</td><td class="num">${signed(t.reste)}</td><td>${pill(x.statut)}</td>
         <td class="num"><button class="btn secondary sm" onclick="event.stopPropagation();openMonthForm('${x.mois}')">Modifier</button></td></tr>
-        ${open?`<tr class="detail"><td colspan="8">${ledger(x)}</td></tr>`:''}`;
+        ${open?`<tr class="detail"><td colspan="9">${ledger(x)}</td></tr>`:''}`;
     }).join('')}</tbody>
-    <tfoot><tr><td>Total (${rows.length} mois)</td><td class="num">${fmt(sum(T,t=>t.totalSalaire))}</td><td class="num">${fmt(sum(T,t=>t.totalEntree))}</td><td class="num">${fmt(sum(T,t=>t.totalCF))}</td><td class="num">${fmt(sum(T,t=>t.totalCV))}</td><td class="num">${signed(sum(T,t=>t.reste))}</td><td></td><td></td></tr></tfoot>
+    <tfoot><tr><td>Total (${rows.length} mois)</td><td class="num">${fmt(sum(T,t=>t.totalSalaire))}</td><td class="num">${fmt(sum(T,t=>t.totalEntree))}</td><td class="num">${fmt(sum(T,t=>t.totalCF))}</td><td class="num">${fmt(sum(T,t=>t.totalCV))}</td><td class="num">${fmt(sum(T,t=>t.epargne))}</td><td class="num">${signed(sum(T,t=>t.reste))}</td><td></td><td></td></tr></tfoot>
   </table></div>` : '<div class="empty">Aucun mois ne correspond à ce filtre.</div>';
   const tools = `<select id="statutSel" aria-label="Statut"><option value="all">Tous les statuts</option>
       <option value="L" ${ui.statut==='L'?'selected':''}>À traiter</option><option value="J" ${ui.statut==='J'?'selected':''}>En cours</option><option value="O" ${ui.statut==='O'?'selected':''}>Clôturé</option></select>
@@ -969,7 +982,7 @@ function renderEpargne(){
   const tipsB = serP.map(s=>`${monthLong(s.mois)}\nNassim : ${fmt(s.contrib.nassim)}\nRoxane : ${fmt(s.contrib.roxane)}\nCommune : ${fmt(s.contrib.both)}`);
   const rows = serP.slice().reverse();
   $('#main').innerHTML = `
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px"><button class="btn secondary" onclick="editSolde()">Corriger le solde</button></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px"><button class="btn danger" onclick="resetEpargne()">Tout remettre à zéro</button><button class="btn secondary" onclick="editSolde()">Corriger le solde</button></div>
     <section class="panel"><div class="kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi"><div class="label">Épargne commune à ce jour</div><div class="value">${fmt(toDate.both)}</div><div class="hint">Prévision ${last?monthLabel(last.mois):''} : ${fmt(last?last.cumul.both:0)}</div></div>
       <div class="kpi"><div class="label">Nassim</div><div class="value" style="color:${C_NASSIM}">${fmt(toDate.nassim)}</div><div class="hint">Cumul à ce jour</div></div>
@@ -1020,11 +1033,11 @@ function render(){
   pendingCharts = [];
   $('#pageTitle').textContent = TITLES[ui.tab];
   document.querySelectorAll('[data-tab]').forEach(b=>{ const on=b.dataset.tab===ui.tab; b.classList.toggle('active',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  $('#yearSel').style.display = ui.tab==='projets' ? 'none' : '';
+  $('#yearSel').style.display = (ui.tab==='projets'||ui.tab==='depenses') ? 'none' : '';
   const ys = years(); if(ui.year!=='all' && !ys.includes(ui.year)) ui.year = ys.includes(String(new Date().getFullYear())) ? String(new Date().getFullYear()) : (ys[ys.length-1]||'all');
   $('#yearSel').innerHTML = `<option value="all">Toutes les années</option>` + ys.map(y=>`<option value="${y}" ${ui.year===y?'selected':''}>${y}</option>`).join('');
   $('#yearSel').value = ui.year;
-  ({synthese:renderSynthese, charges:renderCharges, epargne:renderEpargne, projets:renderProjets})[ui.tab]();
+  ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, projets:renderProjets})[ui.tab]();
   const banner = `<div class="banner" id="syncBanner" role="status"><span><b>Données non partagées.</b> Elles sont enregistrées uniquement sur cet appareil. Activez la synchronisation pour que Nassim et Roxane voient les mêmes informations.</span><button class="btn secondary sm" onclick="openSettings()">Configurer</button></div>`;
   $('#main').insertAdjacentHTML('afterbegin', banner);
   renderBanner(); mountCharts(); renderChrome();
@@ -1058,13 +1071,13 @@ function openMonthForm(mois){
       <div class="sect"><h4>Salaires</h4><div class="fgrid">${num('f_sn','Nassim',m.salaire.nassim)}${num('f_sr','Roxane',m.salaire.roxane)}</div></div>
       ${group('entreeAnnexe','Entrées annexes')}${group('chargesFixes','Charges fixes')}${group('chargesVariables','Charges variables')}
       <div class="sect"><h4>Épargne versée ce mois-ci</h4><div class="fgrid">${num('f_en','Nassim',m.epargne.nassim)}${num('f_er','Roxane',m.epargne.roxane)}</div><div class="livetotal"><span>Commune (somme des deux)</span><b id="f_ebv">0 F</b></div></div>
-      <div class="livetotal"><span>Reste du mois</span><b id="live">—</b></div>
+      <div class="livetotal"><span>Reste du mois (après épargne)</span><b id="live">—</b></div>
       <div class="actions">${existing?`<button type="button" class="btn danger left" id="delM">Supprimer ce mois</button>`:''}<button type="button" class="btn secondary" data-close>Annuler</button><button type="submit" class="btn">Enregistrer</button></div>
     </form>`, {wide:true});
   const val = id => parseFloat(mo.q('#'+id).value)||0;
   const gsum = g => [...mo.qa(`[data-g="${g}"]`)].reduce((s,i)=>s+(parseFloat(i.value)||0),0);
   const live = ()=>{ const xs = g => state.categories[g].reduce((s,c)=>s+((xi[g]&&xi[g][c.id])||0),0);
-    const r = val('f_sn')+val('f_sr')+gsum('entreeAnnexe')+xs('entreeAnnexe')-gsum('chargesFixes')-xs('chargesFixes')-gsum('chargesVariables')-xs('chargesVariables'); const el=mo.q('#live'); el.textContent=fmt(r); mo.q('#f_ebv').textContent=fmt(val('f_en')+val('f_er')); el.className = r<0?'neg':'pos'; };
+    const r = val('f_sn')+val('f_sr')+gsum('entreeAnnexe')+xs('entreeAnnexe')-gsum('chargesFixes')-xs('chargesFixes')-gsum('chargesVariables')-xs('chargesVariables')-val('f_en')-val('f_er'); const el=mo.q('#live'); el.textContent=fmt(r); mo.q('#f_ebv').textContent=fmt(val('f_en')+val('f_er')); el.className = r<0?'neg':'pos'; };
   mo.q('#mform').addEventListener('input', live); live();
   const del = mo.q('#delM'); if(del) del.onclick = ()=>{ mo.close(); confirmModal({title:'Supprimer ce mois ?', message:`${monthLong(m.mois)} sera supprimé définitivement, ainsi que sa contribution à l'épargne.`, confirm:'Supprimer', onConfirm:()=>{ state.months = state.months.filter(x=>x.mois!==m.mois); state.expenses = state.expenses.filter(e=>!(e.date||'').startsWith(m.mois)); persist(); render(); toast('Mois supprimé'); }}); };
   mo.q('#mform').onsubmit = e=>{
@@ -1081,11 +1094,19 @@ function openMonthForm(mois){
     ui.month = newMois; persist(); mo.close(); render(); toast('Enregistré');
   };
 }
+function resetEpargne(){
+  confirmModal({title:"Tout remettre à zéro ?", message:"Tous les versements d'épargne de tous les mois et le solde de départ passent à 0. Les charges et les revenus ne changent pas. Vous pourrez ensuite utiliser « Corriger le solde » ou saisir vos versements.", confirm:'Tout remettre à zéro', onConfirm:()=>{
+    state.months.forEach(m=>{ m.epargne = {nassim:0, roxane:0, both:0}; });
+    state.goal = {...state.goal, startN:0, startR:0}; persist(); render(); toast('Épargne remise à zéro'); }});
+}
 function openEpargneEdit(mois){
   const m = state.months.find(x=>x.mois===mois); if(!m) return;
   formModal({title:'Épargne de '+monthLong(mois), sub:'Montants mis de côté ce mois-ci (négatif en cas de retrait).',
     fields:[{id:'n',label:'Nassim',type:'number',value:m.epargne.nassim||0},{id:'r',label:'Roxane',type:'number',value:m.epargne.roxane||0},],
     onSubmit:v=>{ const n=parseFloat(v.n)||0, r=parseFloat(v.r)||0; m.epargne = {nassim:n, roxane:r, both:n+r}; persist(); render(); toast('Enregistré'); }});
+  const z = document.createElement('button'); z.type='button'; z.className='btn danger left'; z.textContent='Mettre à zéro';
+  z.onclick = ()=>{ m.epargne = {nassim:0, roxane:0, both:0}; persist(); render(); document.querySelector('.overlay').remove(); toast('Mois remis à zéro'); };
+  document.querySelector('.overlay .actions').prepend(z);
 }
 function editSolde(){
   const cur = cumulAt(todayKey()), g = state.goal;
@@ -1179,6 +1200,69 @@ function openQuickAdd(){
     toast((kind==='out'?'Dépense':'Revenu')+' de '+fmt(a)+' ajouté : '+catLabel(cat.g,cat.id));
   };
 }
+
+/* ---------- Journal des dépenses (saisie au quotidien) ---------- */
+function expCatOptions(){
+  const o = [];
+  [['chargesVariables','Variables'],['chargesFixes','Fixes'],['entreeAnnexe','Entrées']].forEach(([g,t])=>state.categories[g].forEach(c=>o.push({v:g+'|'+c.id, l:t+' : '+c.label})));
+  return o;
+}
+function editExpense(id){
+  const e = state.expenses.find(x=>x.id===id); if(!e) return;
+  const opts = expCatOptions(), cur = e.group+'|'+e.cat;
+  if(!opts.some(o=>o.v===cur)) opts.unshift({v:cur, l:'Poste supprimé'});
+  formModal({title:"Modifier l'opération", fields:[
+    {id:'a',label:'Montant (F)',type:'number',value:e.amount},
+    {id:'c',label:'Catégorie',type:'select',options:opts,value:cur},
+    {id:'w',label:'Qui ?',type:'select',options:[{v:'Nassim',l:'Nassim'},{v:'Roxane',l:'Roxane'}],value:e.who||'Nassim'},
+    {id:'d',label:'Date',type:'date',value:e.date},
+    {id:'n',label:'Note',value:e.note||''}],
+    onSubmit:v=>{
+      const a = parseFloat(v.a)||0; if(!(a>0)){ toast('Indiquez un montant.', true); return false; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v.d)){ toast('Indiquez une date valide.', true); return false; }
+      const [g,cid] = v.c.split('|'), month = v.d.slice(0,7);
+      if(!state.months.some(x=>x.mois===month)){ const nm = emptyMonth(month); applyRecTo(nm); state.months.push(nm); }
+      Object.assign(e, {amount:a, group:g, cat:cid, who:v.w, date:v.d, note:v.n.trim()});
+      ui.month = month; persist(); render(); toast('Opération modifiée'); }});
+}
+function renderDepenses(){
+  const all = sortedMonths(), mk = pickMonth(), idx = all.findIndex(x=>x.mois===mk);
+  const inMonth = state.expenses.filter(e=>(e.date||'').startsWith(mk));
+  const outs = inMonth.filter(e=>e.group!=='entreeAnnexe'), ins = inMonth.filter(e=>e.group==='entreeAnnexe');
+  const totOut = sum(outs,e=>e.amount), totIn = sum(ins,e=>e.amount);
+  const byCat = {}; outs.forEach(e=>{ const k=e.group+'|'+e.cat; byCat[k]=(byCat[k]||0)+e.amount; });
+  const cats = Object.entries(byCat).map(([k,v])=>{ const [g,id]=k.split('|'); return {k, label:catLabel(g,id), v}; }).sort((a,b)=>b.v-a.v);
+  if(ui.cat!=='all' && !inMonth.some(e=>e.group+'|'+e.cat===ui.cat)) ui.cat = 'all';
+  const shown = inMonth.filter(e=>ui.cat==='all' || e.group+'|'+e.cat===ui.cat).sort((a,b)=>(b.date||'').localeCompare(a.date||'') || ((b._u||0)-(a._u||0)));
+  const days = {}; shown.forEach(e=>{ (days[e.date]=days[e.date]||[]).push(e); });
+  const dayLabel = d => { try{ const s = new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); return s.charAt(0).toUpperCase()+s.slice(1); }catch(x){ return d; } };
+  const list = Object.keys(days).sort().reverse().map(d=>{
+    const dayTot = sum(days[d].filter(e=>e.group!=='entreeAnnexe'),e=>e.amount);
+    return `<div class="dayhead"><span>${esc(dayLabel(d))}</span><span class="num">${dayTot?'−'+fmt(dayTot):''}</span></div><div>` + days[d].map(e=>{
+      const inc = e.group==='entreeAnnexe', sub = [e.who, e.note].filter(Boolean).join(' – ');
+      return `<div class="ex2"><button class="ti" onclick="editExpense('${e.id}')" title="Modifier"><b>${esc(catLabel(e.group,e.cat))}</b>${sub?`<span>${esc(sub)}</span>`:''}</button>
+        <div class="num ${inc?'pos':''}">${inc?'+':'−'}${fmt(e.amount)}</div>
+        <button class="btn danger sm icon" onclick="deleteExpense('${e.id}')" aria-label="Supprimer">×</button></div>`;
+    }).join('') + '</div>';
+  }).join('');
+  const maxV = cats.length ? cats[0].v : 1;
+  $('#main').innerHTML = `
+    <section class="hero" style="padding:18px 22px">
+      <div class="hero-top" style="margin-bottom:10px"><button class="mnav" onclick="shiftMonth(-1)" aria-label="Mois précédent" ${idx<=0?'disabled':''}>‹</button>
+        <div class="hero-month">${monthLong(mk)}</div>
+        <button class="mnav" onclick="shiftMonth(1)" aria-label="Mois suivant" ${idx>=all.length-1?'disabled':''}>›</button>
+        <button class="btn" style="margin-left:auto" onclick="openQuickAdd()">Ajouter</button></div>
+      <div class="hero-label">Dépenses notées ce mois-ci</div>
+      <div class="hero-num" style="font-size:40px">${fmt(totOut)}</div>
+      <div class="hero-sub">${outs.length} dépense${outs.length>1?'s':''}${totIn?', '+fmt(totIn)+' de revenus ajoutés':''}</div>
+    </section>
+    <div class="grid2">
+      ${panel('Par catégorie', cats.length ? cats.map(c=>`<button class="bud catbtn ${ui.cat===c.k?'sel':''}" onclick="setCat('${c.k}')"><div class="nm">${esc(c.label)}</div><div class="bar"><i style="width:${(c.v/maxV*100).toFixed(1)}%"></i></div><div class="amt num">${fmt(c.v)}<small>${totOut?Math.round(c.v/totOut*100):0} %</small></div></button>`).join('') : '<div class="empty">Aucune dépense ce mois-ci. Touchez « Ajouter » pour noter la première.</div>',
+        ui.cat!=='all' ? `<button class="btn secondary sm" onclick="setCat('all')">Tout afficher</button>` : '', 'Touchez une catégorie pour filtrer')}
+      ${panel('Opérations', shown.length ? list : '<div class="empty">Rien à afficher pour ce mois.</div>', '', 'Touchez une ligne pour la modifier')}
+    </div>`;
+}
+function setCat(k){ ui.cat = (ui.cat===k) ? 'all' : k; render(); }
 
 /* ---------- Projets ---------- */
 function addProject(){
