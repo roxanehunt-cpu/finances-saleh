@@ -669,6 +669,8 @@ function epargneSeries(){
     return {mois:m.mois, contrib:{nassim:n, roxane:r, both:n+r}, cumul:{...run}};
   });
 }
+/* Dernier mois avec un versement : la prévision s'arrête là, pas au dernier mois du calendrier */
+function lastActive(ser){ for(let i=ser.length-1;i>=0;i--){ const c=ser[i].contrib; if(c.nassim||c.roxane) return ser[i]; } return null; }
 function cumulAt(key){
   let r = epargneStart();
   epargneSeries().forEach(s=>{ if(s.mois<=key) r = s.cumul; });
@@ -881,7 +883,7 @@ function deleteExpense(id){
 function renderSynthese(){
   const ms = periodMonths(), T = ms.map(totalsFor);
   const rev = sum(T,t=>t.revenus), chg = sum(T,t=>t.charges), reste = sum(T,t=>t.reste);
-  const ser = epargneSeries(), last = ser[ser.length-1], toDate = cumulAt(todayKey());
+  const ser = epargneSeries(), last = lastActive(ser), toDate = cumulAt(todayKey());
   const all = sortedMonths(), mk = pickMonth(), idx = all.findIndex(x=>x.mois===mk), m = all[idx];
   const labels = ms.map(x=>ui.year==='all'?monthLabel(x.mois):MS[+x.mois.slice(5)-1]);
   const tips = ms.map((x,i)=>`${monthLong(x.mois)}\nRevenus : ${fmt(T[i].revenus)}\nCharges : ${fmt(T[i].charges)}\nÉpargne : ${fmt(T[i].epargne)}\nReste : ${fmt(T[i].reste)}`);
@@ -973,7 +975,7 @@ function renderCharges(){
 function toggleExpand(mois){ ui.expanded = ui.expanded===mois ? null : mois; renderCharges(); mountCharts(); }
 
 function renderEpargne(){
-  const ser = epargneSeries(), toDate = cumulAt(todayKey()), last = ser[ser.length-1];
+  const ser = epargneSeries(), toDate = cumulAt(todayKey()), last = lastActive(ser);
   const inP = s => periodMonths().some(x=>x.mois===s.mois);
   const nz = s => !!(s.contrib.nassim || s.contrib.roxane);
   const fi = ser.findIndex(nz);                       /* les mois à 0 avant le premier versement ne comptent pas */
@@ -986,7 +988,7 @@ function renderEpargne(){
   const rows = (ui.showZero ? ser.filter(inP) : serP.filter(nz)).slice().reverse();
   const warn = (st.nassim<0 || st.roxane<0) ? `<div class="banner" role="status"><span><b>Votre solde de départ est négatif (${fmt(st.both)}).</b> Il vient d'une ancienne correction et il réduit tout le cumul. Si vos versements ci-dessous sont à jour, remettez-le à 0.</span><button class="btn secondary sm" onclick="resetStart()">Remettre à 0</button></div>` : '';
   $('#main').innerHTML = warn + `
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;flex-wrap:wrap"><button class="btn danger" onclick="resetEpargne()">Tout remettre à zéro</button><button class="btn secondary" onclick="editSolde()">Corriger le solde</button><button class="btn" onclick="addVersement()">Ajouter un versement</button></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;flex-wrap:wrap"><button class="btn secondary" onclick="clearFutureEpargne()">Effacer les mois suivants</button><button class="btn danger" onclick="resetEpargne()">Tout remettre à zéro</button><button class="btn secondary" onclick="editSolde()">Corriger le solde</button><button class="btn" onclick="addVersement()">Ajouter un versement</button></div>
     <section class="panel"><div class="kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi"><div class="label">Épargne commune à ce jour</div><div class="value">${fmt(toDate.both)}</div><div class="hint">Prévision ${last?monthLabel(last.mois):''} : ${fmt(last?last.cumul.both:0)}</div></div>
       <div class="kpi"><div class="label">Nassim</div><div class="value" style="color:${C_NASSIM}">${fmt(toDate.nassim)}</div><div class="hint">Cumul à ce jour</div></div>
@@ -1112,6 +1114,14 @@ function addVersement(){
     fields:[{id:'m',label:'Mois',type:'select',options:opts,value:todayKey()},{id:'n',label:'Nassim (F)',type:'number',value:''},{id:'r',label:'Roxane (F)',type:'number',value:''}],
     onSubmit:v=>{ const m = state.months.find(x=>x.mois===v.m); if(!m) return false; const n=parseFloat(v.n)||0, r=parseFloat(v.r)||0;
       m.epargne = {nassim:n, roxane:r, both:n+r}; persist(); render(); toast('Versement enregistré'); }});
+}
+function clearFutureEpargne(){
+  const opts = sortedMonths().map(m=>({v:m.mois, l:monthLong(m.mois)}));
+  const def = sortedMonths().some(m=>m.mois==='2026-12') ? '2026-12' : todayKey();
+  formModal({title:'Effacer les mois suivants', sub:"Les versements d'épargne des mois après celui que vous choisissez sont remis à 0. La prévision s'arrête alors au dernier mois conservé. Les charges et les revenus ne changent pas.",
+    fields:[{id:'m',label:"Conserver les versements jusqu'à",type:'select',options:opts,value:def}], submit:'Effacer les mois suivants',
+    onSubmit:v=>{ let n=0; state.months.forEach(m=>{ if(m.mois>v.m && (m.epargne.nassim||m.epargne.roxane||m.epargne.both)){ m.epargne={nassim:0,roxane:0,both:0}; n++; } });
+      persist(); render(); toast(n ? n+' mois remis à 0' : 'Aucun mois à effacer'); }});
 }
 function resetEpargne(){
   confirmModal({title:"Tout remettre à zéro ?", message:"Tous les versements d'épargne de tous les mois et le solde de départ passent à 0. Les charges et les revenus ne changent pas. Vous pourrez ensuite utiliser « Corriger le solde » ou saisir vos versements.", confirm:'Tout remettre à zéro', onConfirm:()=>{
