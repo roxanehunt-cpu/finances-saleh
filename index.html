@@ -444,7 +444,7 @@ const SEED_PROJECTS = [
      leurs données (la modification la plus récente gagne, élément par élément).
    ============================================================ */
 let state, lastHash = {}, currentUser = null;
-let ui = { tab:'synthese', year:'', statut:'all', expanded:null, month:null, cat:'all' };
+let ui = { tab:'synthese', year:'', statut:'all', expanded:null, month:null, cat:'all', showZero:false };
 
 function emptyGroup(group, cats){ const o={}; cats[group].forEach(c=>o[c.id]=0); return o; }
 function emptyMonth(mois){
@@ -974,15 +974,19 @@ function toggleExpand(mois){ ui.expanded = ui.expanded===mois ? null : mois; ren
 
 function renderEpargne(){
   const ser = epargneSeries(), toDate = cumulAt(todayKey()), last = ser[ser.length-1];
-  const serP = ser.filter(s=>periodMonths().some(x=>x.mois===s.mois));
+  const inP = s => periodMonths().some(x=>x.mois===s.mois);
+  const nz = s => !!(s.contrib.nassim || s.contrib.roxane);
+  const fi = ser.findIndex(nz);                       /* les mois à 0 avant le premier versement ne comptent pas */
+  const serP = (fi<0 ? [] : ser.slice(fi)).filter(inP);
   const projFrom = serP.filter(s=>s.mois<=todayKey()).length;
   const lab = serP.map(s=>MS[+s.mois.slice(5)-1]+(ui.year==='all'?' '+s.mois.slice(2,4):''));
-  const g = state.goal, pct = g.target>0 ? Math.max(0,Math.min(100,Math.round(toDate.both/g.target*100))) : 0;
+  const st = epargneStart(), g = state.goal, pct = g.target>0 ? Math.max(0,Math.min(100,Math.round(toDate.both/g.target*100))) : 0;
   const tipsL = serP.map(s=>`${monthLong(s.mois)}\nCommune : ${fmt(s.cumul.both)}\nNassim : ${fmt(s.cumul.nassim)}\nRoxane : ${fmt(s.cumul.roxane)}`);
   const tipsB = serP.map(s=>`${monthLong(s.mois)}\nNassim : ${fmt(s.contrib.nassim)}\nRoxane : ${fmt(s.contrib.roxane)}\nCommune : ${fmt(s.contrib.both)}`);
-  const rows = serP.slice().reverse();
-  $('#main').innerHTML = `
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px"><button class="btn danger" onclick="resetEpargne()">Tout remettre à zéro</button><button class="btn secondary" onclick="editSolde()">Corriger le solde</button></div>
+  const rows = (ui.showZero ? ser.filter(inP) : serP.filter(nz)).slice().reverse();
+  const warn = (st.nassim<0 || st.roxane<0) ? `<div class="banner" role="status"><span><b>Votre solde de départ est négatif (${fmt(st.both)}).</b> Il vient d'une ancienne correction et il réduit tout le cumul. Si vos versements ci-dessous sont à jour, remettez-le à 0.</span><button class="btn secondary sm" onclick="resetStart()">Remettre à 0</button></div>` : '';
+  $('#main').innerHTML = warn + `
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;flex-wrap:wrap"><button class="btn danger" onclick="resetEpargne()">Tout remettre à zéro</button><button class="btn secondary" onclick="editSolde()">Corriger le solde</button><button class="btn" onclick="addVersement()">Ajouter un versement</button></div>
     <section class="panel"><div class="kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi"><div class="label">Épargne commune à ce jour</div><div class="value">${fmt(toDate.both)}</div><div class="hint">Prévision ${last?monthLabel(last.mois):''} : ${fmt(last?last.cumul.both:0)}</div></div>
       <div class="kpi"><div class="label">Nassim</div><div class="value" style="color:${C_NASSIM}">${fmt(toDate.nassim)}</div><div class="hint">Cumul à ce jour</div></div>
@@ -994,13 +998,14 @@ function renderEpargne(){
       `<button class="btn secondary" onclick="editGoal()">${g.target>0?'Modifier':"Définir l'objectif"}</button>`)}
     ${panel('Évolution du cumul', serP.length ? chartSlot('c1', W=>linesChart(W, lab, tipsL, [{name:'Commune',color:C_COM,values:serP.map(s=>s.cumul.both)},{name:'Nassim',color:C_NASSIM,values:serP.map(s=>s.cumul.nassim)},{name:'Roxane',color:C_ROXANE,values:serP.map(s=>s.cumul.roxane)}], projFrom)) : '<div class="empty">Aucune donnée.</div>', '', periodLabel())}
     ${panel('Contributions mensuelles', serP.length ? chartSlot('c2', W=>barsChart(W, lab, tipsB, [{name:'Nassim',color:C_NASSIM,values:serP.map(s=>s.contrib.nassim)},{name:'Roxane',color:C_ROXANE,values:serP.map(s=>s.contrib.roxane)}])) : '<div class="empty">Aucune donnée.</div>', '', periodLabel())}
-    <section class="panel"><div class="panel-head"><div><h2>Détail par mois</h2><div class="sub">Cliquez sur une ligne pour corriger une contribution.</div></div></div>
-      <div style="padding-top:14px">${rows.length ? `<div class="tablewrap"><table>
+    <section class="panel"><div class="panel-head"><div><h2>Détail par mois</h2><div class="sub">Seuls les mois avec un versement sont affichés. Touchez une ligne pour la corriger.</div></div><div class="tools"><button class="btn secondary sm" onclick="ui.showZero=!ui.showZero;render()">${ui.showZero?'Masquer les mois à 0':'Afficher les mois à 0'}</button></div></div>
+      <div style="padding-top:14px">${true ? `<div class="tablewrap"><table>
         <thead><tr><th>Mois</th><th class="num">Nassim</th><th class="num">Roxane</th><th class="num">Commune</th><th class="num">Cumul commun</th></tr></thead>
         <tbody>${rows.map(s=>`<tr class="row" onclick="openEpargneEdit('${s.mois}')"><td>${monthLabel(s.mois)}</td>
           <td class="num ${s.contrib.nassim?'':'zero'}">${signed(s.contrib.nassim)}</td><td class="num ${s.contrib.roxane?'':'zero'}">${signed(s.contrib.roxane)}</td>
-          <td class="num ${s.contrib.both?'':'zero'}">${signed(s.contrib.both)}</td><td class="num"><b>${fmt(s.cumul.both)}</b></td></tr>`).join('')}</tbody>
-      </table></div>` : '<div class="empty">Aucune contribution enregistrée.</div>'}</div></section>`;
+          <td class="num ${s.contrib.both?'':'zero'}">${signed(s.contrib.both)}</td><td class="num"><b>${fmt(s.cumul.both)}</b></td></tr>`).join('')}
+          <tr class="row" onclick="editStart()"><td>Solde de départ</td><td class="num ${st.nassim?'':'zero'}">${signed(st.nassim)}</td><td class="num ${st.roxane?'':'zero'}">${signed(st.roxane)}</td><td class="num ${st.both?'':'zero'}">${signed(st.both)}</td><td class="num"><span class="help" style="margin:0">Modifier</span></td></tr></tbody>
+      </table></div>` : '<div class="empty">Aucun versement enregistré. Touchez « Ajouter un versement ».</div>'}</div></section>`;
 }
 
 function renderProjets(){
@@ -1093,6 +1098,20 @@ function openMonthForm(mois){
     state.months = state.months.filter(x=>x.mois!==m.mois); state.months.push(upd);
     ui.month = newMois; persist(); mo.close(); render(); toast('Enregistré');
   };
+}
+function editStart(){
+  const s = epargneStart();
+  formModal({title:'Solde de départ', sub:"Épargne que vous aviez déjà avant le premier versement ci-dessous. Mettez 0 si vous repartez de zéro : les mois à 0 n'influencent alors plus le cumul.",
+    fields:[{id:'n',label:'Nassim (F)',type:'number',value:s.nassim},{id:'r',label:'Roxane (F)',type:'number',value:s.roxane,help:"L'épargne commune est la somme des deux."}],
+    onSubmit:v=>{ state.goal = {...state.goal, startN:parseFloat(v.n)||0, startR:parseFloat(v.r)||0}; persist(); render(); toast('Solde de départ enregistré'); }});
+}
+function resetStart(){ state.goal = {...state.goal, startN:0, startR:0}; persist(); render(); toast('Solde de départ remis à 0'); }
+function addVersement(){
+  const opts = sortedMonths().map(m=>({v:m.mois, l:monthLong(m.mois)}));
+  formModal({title:'Ajouter un versement', sub:"Remplace le versement du mois choisi.",
+    fields:[{id:'m',label:'Mois',type:'select',options:opts,value:todayKey()},{id:'n',label:'Nassim (F)',type:'number',value:''},{id:'r',label:'Roxane (F)',type:'number',value:''}],
+    onSubmit:v=>{ const m = state.months.find(x=>x.mois===v.m); if(!m) return false; const n=parseFloat(v.n)||0, r=parseFloat(v.r)||0;
+      m.epargne = {nassim:n, roxane:r, both:n+r}; persist(); render(); toast('Versement enregistré'); }});
 }
 function resetEpargne(){
   confirmModal({title:"Tout remettre à zéro ?", message:"Tous les versements d'épargne de tous les mois et le solde de départ passent à 0. Les charges et les revenus ne changent pas. Vous pourrez ensuite utiliser « Corriger le solde » ou saisir vos versements.", confirm:'Tout remettre à zéro', onConfirm:()=>{
