@@ -458,7 +458,7 @@ function normalize(s){
   o.categories = {};
   ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ o.categories[g] = (asArray(c[g]).length||c[g]!==undefined ? asArray(c[g]) : SEED_CATEGORIES[g]).map(x=>({id:x.id,label:x.label,budget:+x.budget||0,rec:+x.rec||0})); });
   const sr = c.salaryRec||{}; o.categories.salaryRec = {nassim:+sr.nassim||0, roxane:+sr.roxane||0};
-  o.goal = {label:'', target:0, ...(o.goal||{})};
+  o.goal = {label:'', target:0, ...(o.goal||{})}; o.goal.startN = +o.goal.startN||0; o.goal.startR = +o.goal.startR||0;
   o.catsU = o.catsU||0; o.goalU = o.goalU||0; o.tomb = {...(o.tomb||{})};
   o.updatedAt = o.updatedAt||0; o.updatedBy = o.updatedBy||'';
   return o;
@@ -647,16 +647,18 @@ function statutInfo(s){
   if(s==='J') return {cls:'progress', label:'En cours'};
   return {cls:'todo', label:'À traiter'};
 }
+/* Épargne commune = somme des deux contributions. Le solde de départ (goal.startN / startR) permet de corriger le cumul. */
+function epargneStart(){ const g = state.goal, n = g.startN||0, r = g.startR||0; return {nassim:n, roxane:r, both:n+r}; }
 function epargneSeries(){
-  let run = {nassim:0, roxane:0, both:0};
+  let run = epargneStart();
   return sortedMonths().map(m=>{
-    const c = m.epargne;
-    run = {nassim:run.nassim+(c.nassim||0), roxane:run.roxane+(c.roxane||0), both:run.both+(c.both||0)};
-    return {mois:m.mois, contrib:c, cumul:{...run}};
+    const n = m.epargne.nassim||0, r = m.epargne.roxane||0;
+    run = {nassim:run.nassim+n, roxane:run.roxane+r, both:run.both+n+r};
+    return {mois:m.mois, contrib:{nassim:n, roxane:r, both:n+r}, cumul:{...run}};
   });
 }
 function cumulAt(key){
-  let r = {nassim:0, roxane:0, both:0};
+  let r = epargneStart();
   epargneSeries().forEach(s=>{ if(s.mois<=key) r = s.cumul; });
   return r;
 }
@@ -878,7 +880,7 @@ function renderSynthese(){
   if(m){
     const tm = totalsFor(m), prev = idx>0 ? all[idx-1] : null, tp = prev ? totalsFor(prev) : null;
     const used = tm.revenus>0 ? tm.charges/tm.revenus*100 : (tm.charges>0 ? 100 : 0), c = cls100(used);
-    const epm = m.epargne.both||0, taux = tm.revenus>0 ? epm/tm.revenus*100 : 0;
+    const epm = (m.epargne.nassim||0)+(m.epargne.roxane||0), taux = tm.revenus>0 ? epm/tm.revenus*100 : 0;
     const noData = tm.revenus===0 && tm.charges===0;
     hero = `<section class="hero">
       <div class="hero-top"><button class="mnav" onclick="shiftMonth(-1)" aria-label="Mois précédent" ${idx<=0?'disabled':''}>‹</button>
@@ -967,6 +969,7 @@ function renderEpargne(){
   const tipsB = serP.map(s=>`${monthLong(s.mois)}\nNassim : ${fmt(s.contrib.nassim)}\nRoxane : ${fmt(s.contrib.roxane)}\nCommune : ${fmt(s.contrib.both)}`);
   const rows = serP.slice().reverse();
   $('#main').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px"><button class="btn secondary" onclick="editSolde()">Corriger le solde</button></div>
     <section class="panel"><div class="kpis" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi"><div class="label">Épargne commune à ce jour</div><div class="value">${fmt(toDate.both)}</div><div class="hint">Prévision ${last?monthLabel(last.mois):''} : ${fmt(last?last.cumul.both:0)}</div></div>
       <div class="kpi"><div class="label">Nassim</div><div class="value" style="color:${C_NASSIM}">${fmt(toDate.nassim)}</div><div class="hint">Cumul à ce jour</div></div>
@@ -1054,14 +1057,14 @@ function openMonthForm(mois){
       <div class="field"><label for="f_statut">Statut</label><select id="f_statut"><option value="L" ${m.statut==='L'?'selected':''}>À traiter</option><option value="J" ${m.statut==='J'?'selected':''}>En cours</option><option value="O" ${m.statut==='O'?'selected':''}>Clôturé</option></select></div></div>
       <div class="sect"><h4>Salaires</h4><div class="fgrid">${num('f_sn','Nassim',m.salaire.nassim)}${num('f_sr','Roxane',m.salaire.roxane)}</div></div>
       ${group('entreeAnnexe','Entrées annexes')}${group('chargesFixes','Charges fixes')}${group('chargesVariables','Charges variables')}
-      <div class="sect"><h4>Épargne versée ce mois-ci</h4><div class="fgrid">${num('f_en','Nassim',m.epargne.nassim)}${num('f_er','Roxane',m.epargne.roxane)}</div><div style="margin-top:10px">${num('f_eb','Commune',m.epargne.both)}</div></div>
+      <div class="sect"><h4>Épargne versée ce mois-ci</h4><div class="fgrid">${num('f_en','Nassim',m.epargne.nassim)}${num('f_er','Roxane',m.epargne.roxane)}</div><div class="livetotal"><span>Commune (somme des deux)</span><b id="f_ebv">0 F</b></div></div>
       <div class="livetotal"><span>Reste du mois</span><b id="live">—</b></div>
       <div class="actions">${existing?`<button type="button" class="btn danger left" id="delM">Supprimer ce mois</button>`:''}<button type="button" class="btn secondary" data-close>Annuler</button><button type="submit" class="btn">Enregistrer</button></div>
     </form>`, {wide:true});
   const val = id => parseFloat(mo.q('#'+id).value)||0;
   const gsum = g => [...mo.qa(`[data-g="${g}"]`)].reduce((s,i)=>s+(parseFloat(i.value)||0),0);
   const live = ()=>{ const xs = g => state.categories[g].reduce((s,c)=>s+((xi[g]&&xi[g][c.id])||0),0);
-    const r = val('f_sn')+val('f_sr')+gsum('entreeAnnexe')+xs('entreeAnnexe')-gsum('chargesFixes')-xs('chargesFixes')-gsum('chargesVariables')-xs('chargesVariables'); const el=mo.q('#live'); el.textContent=fmt(r); el.className = r<0?'neg':'pos'; };
+    const r = val('f_sn')+val('f_sr')+gsum('entreeAnnexe')+xs('entreeAnnexe')-gsum('chargesFixes')-xs('chargesFixes')-gsum('chargesVariables')-xs('chargesVariables'); const el=mo.q('#live'); el.textContent=fmt(r); mo.q('#f_ebv').textContent=fmt(val('f_en')+val('f_er')); el.className = r<0?'neg':'pos'; };
   mo.q('#mform').addEventListener('input', live); live();
   const del = mo.q('#delM'); if(del) del.onclick = ()=>{ mo.close(); confirmModal({title:'Supprimer ce mois ?', message:`${monthLong(m.mois)} sera supprimé définitivement, ainsi que sa contribution à l'épargne.`, confirm:'Supprimer', onConfirm:()=>{ state.months = state.months.filter(x=>x.mois!==m.mois); state.expenses = state.expenses.filter(e=>!(e.date||'').startsWith(m.mois)); persist(); render(); toast('Mois supprimé'); }}); };
   mo.q('#mform').onsubmit = e=>{
@@ -1072,7 +1075,7 @@ function openMonthForm(mois){
     const grp = g => { const o={}; mo.qa(`[data-g="${g}"]`).forEach(i=>o[i.dataset.c]=parseFloat(i.value)||0); return o; };
     const upd = {mois:newMois, statut:mo.q('#f_statut').value, _u:0,
       salaire:{nassim:val('f_sn'), roxane:val('f_sr')}, entreeAnnexe:grp('entreeAnnexe'), chargesFixes:grp('chargesFixes'), chargesVariables:grp('chargesVariables'),
-      epargne:{nassim:val('f_en'), roxane:val('f_er'), both:val('f_eb')}};
+      epargne:{nassim:val('f_en'), roxane:val('f_er'), both:val('f_en')+val('f_er')}};
     if(newMois!==m.mois) state.expenses.forEach(e=>{ if((e.date||'').startsWith(m.mois)) e.date = newMois+e.date.slice(7); });
     state.months = state.months.filter(x=>x.mois!==m.mois); state.months.push(upd);
     ui.month = newMois; persist(); mo.close(); render(); toast('Enregistré');
@@ -1081,13 +1084,21 @@ function openMonthForm(mois){
 function openEpargneEdit(mois){
   const m = state.months.find(x=>x.mois===mois); if(!m) return;
   formModal({title:'Épargne de '+monthLong(mois), sub:'Montants mis de côté ce mois-ci (négatif en cas de retrait).',
-    fields:[{id:'n',label:'Nassim',type:'number',value:m.epargne.nassim||0},{id:'r',label:'Roxane',type:'number',value:m.epargne.roxane||0},{id:'b',label:'Commune',type:'number',value:m.epargne.both||0}],
-    onSubmit:v=>{ m.epargne = {nassim:parseFloat(v.n)||0, roxane:parseFloat(v.r)||0, both:parseFloat(v.b)||0}; persist(); render(); toast('Enregistré'); }});
+    fields:[{id:'n',label:'Nassim',type:'number',value:m.epargne.nassim||0},{id:'r',label:'Roxane',type:'number',value:m.epargne.roxane||0},],
+    onSubmit:v=>{ const n=parseFloat(v.n)||0, r=parseFloat(v.r)||0; m.epargne = {nassim:n, roxane:r, both:n+r}; persist(); render(); toast('Enregistré'); }});
+}
+function editSolde(){
+  const cur = cumulAt(todayKey()), g = state.goal;
+  formModal({title:"Corriger le solde d'épargne", sub:"Indiquez l'épargne réelle de chacun aujourd'hui. Le solde de départ est ajusté automatiquement ; les versements de chaque mois restent modifiables dans le tableau.",
+    fields:[{id:'n',label:'Nassim : épargne réelle à ce jour (F)',type:'number',value:Math.round(cur.nassim)},
+            {id:'r',label:'Roxane : épargne réelle à ce jour (F)',type:'number',value:Math.round(cur.roxane),help:"L'épargne commune est calculée automatiquement : somme des deux."}],
+    onSubmit:v=>{ const dn=(parseFloat(v.n)||0)-cur.nassim, dr=(parseFloat(v.r)||0)-cur.roxane;
+      state.goal = {...g, startN:(g.startN||0)+dn, startR:(g.startR||0)+dr}; persist(); render(); toast('Solde corrigé'); }});
 }
 function editGoal(){
   formModal({title:"Objectif d'épargne commune", sub:"Montant total à atteindre ensemble.",
     fields:[{id:'l',label:'Nom de l\'objectif',value:state.goal.label,placeholder:'Ex. Apport pour la maison'},{id:'t',label:'Montant cible (F)',type:'number',value:state.goal.target||''}],
-    onSubmit:v=>{ state.goal = {label:v.l.trim(), target:parseFloat(v.t)||0}; persist(); render(); toast('Objectif enregistré'); }});
+    onSubmit:v=>{ state.goal = {...state.goal, label:v.l.trim(), target:parseFloat(v.t)||0}; persist(); render(); toast('Objectif enregistré'); }});
 }
 
 function openCategoryManager(){
