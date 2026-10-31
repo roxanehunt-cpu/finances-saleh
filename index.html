@@ -1622,8 +1622,7 @@ function alertsFor(mk){
   const m = state.months.find(x=>x.mois===mk), out = []; if(!m) return out;
   budgetRows(m).forEach(r=>{ if(r.b>0){ const p = r.s/r.b*100;
     if(r.s>r.b) out.push({lvl:'over', t:`${r.label} : budget dépassé de ${fmt(r.s-r.b)} (budget ${fmt(r.b)})`});
-    else if(p>=100) out.push({lvl:'warn', t:`${r.label} : budget atteint (${fmt(r.b)})`});
-    else if(p>=80) out.push({lvl:'warn', t:`${r.label} : ${Math.round(p)} % du budget utilisé (${fmt(r.s)} sur ${fmt(r.b)})`}); } });
+    else if(p>=80 && p<100) out.push({lvl:'warn', t:`${r.label} : ${Math.round(p)} % du budget utilisé (${fmt(r.s)} sur ${fmt(r.b)})`}); } });
   if(mk===todayKey()){ const now = new Date().getDate();
     state.categories.chargesFixes.forEach(c=>{ if(c.day>0 && (c.rec>0||c.budget>0)){ const d = c.day-now;
       if(d>=0 && d<=3) out.push({lvl:'due', t:`${c.label} à payer ${d===0?"aujourd'hui":d===1?'demain':'dans '+d+' jours'} (le ${c.day})${(c.rec||c.budget)?' · '+fmt(c.rec||c.budget):''}`}); } }); }
