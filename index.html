@@ -558,6 +558,7 @@ body{font-weight:400}
 .hlab{font-size:13px; color:var(--ink-3)} .hval{font-size:20px; font-weight:650; margin:2px 0} .hhint{font-size:12px; color:var(--ink-3)}
 @media (max-width:899px){ .health{grid-template-columns:1fr 1fr} } @media (max-width:520px){ .health{grid-template-columns:1fr} }
 .debt{padding:12px 0; border-top:1px solid var(--line)} .debt:first-child{border-top:0; padding-top:0} .debt .gt{display:flex; justify-content:space-between; gap:10px; margin-bottom:6px}
+.ins{display:flex; gap:10px; align-items:flex-start; padding:11px 0; border-top:1px solid var(--line)} .ins:first-child{border-top:0; padding-top:0} .ins .hd{margin-top:5px} .hd.na{background:#94A3B8} .pilltxt{font-size:11px; color:var(--ink-3); margin-left:4px}
 #printArea{display:none}
 @media print{ body>*:not(#printArea){display:none !important} #printArea{display:block !important; padding:16px; background:#fff; color:#111} }
 @media (max-width:640px){ .chstats{grid-template-columns:1fr 1fr} .rp-k{grid-template-columns:1fr 1fr} }
@@ -716,12 +717,13 @@ function normalize(s){
   o.expenses = asArray(o.expenses).map(e=>({id:e.id, date:e.date||'', amount:+e.amount||0, group:e.group||'chargesVariables', cat:e.cat||'', who:e.who||'', note:e.note||'', acc:e.acc||'', _u:e._u||0}));
   o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', budget:+p.budget||0, prio:+p.prio||0, acc:p.acc||'', kind:p.kind||'', _u:p._u||0,
     items:asArray(p.items).map(i=>({id:i.id, label:i.label||'', amount:+i.amount||0, checked:!!i.checked, paid:+i.paid||0, st:i.st||''}))}));
-  o.debts = asArray(o.debts).map(d=>({id:d.id, label:d.label||'', creditor:d.creditor||'', amount:+d.amount||0, monthly:+d.monthly||0, end:d.end||'', _u:d._u||0, pays:asArray(d.pays).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||''}))}));
+  o.debts = asArray(o.debts).map(d=>({id:d.id, label:d.label||'', creditor:d.creditor||'', amount:+d.amount||0, monthly:+d.monthly||0, end:d.end||'', _u:d._u||0, pays:asArray(d.pays).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||'', acc:x.acc||''}))}));
   o.accounts = asArray(o.accounts).map(a=>({id:a.id, name:a.name||'', bank:a.bank||'', kind:a.kind||'courant', start:+a.start||0, _u:a._u||0, moves:asArray(a.moves).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||''}))}));
   const c = o.categories||{};
   o.categories = {};
-  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ o.categories[g] = (asArray(c[g]).length||c[g]!==undefined ? asArray(c[g]) : SEED_CATEGORIES[g]).map(x=>({id:x.id,label:x.label,budget:+x.budget||0,rec:+x.rec||0,day:+x.day||0})); });
+  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ o.categories[g] = (asArray(c[g]).length||c[g]!==undefined ? asArray(c[g]) : SEED_CATEGORIES[g]).map(x=>({id:x.id,label:x.label,budget:+x.budget||0,rec:+x.rec||0,day:+x.day||0,acc:x.acc||''})); });
   const sr = c.salaryRec||{}; o.categories.salaryRec = {nassim:+sr.nassim||0, roxane:+sr.roxane||0};
+  const sa = c.salaryAcc||{}; o.categories.salaryAcc = {nassim:sa.nassim||'', roxane:sa.roxane||''}; o.categories.epargneAcc = c.epargneAcc||''; o.categories.epargneFrom = c.epargneFrom||''; o.categories.flowFrom = c.flowFrom||'';
   o.goal = {label:'', target:0, ...(o.goal||{})}; o.goal.startN = +o.goal.startN||0; o.goal.startR = +o.goal.startR||0;
   o.catsU = o.catsU||0; o.goalU = o.goalU||0; o.tomb = {...(o.tomb||{})};
   o.updatedAt = o.updatedAt||0; o.updatedBy = o.updatedBy||'';
@@ -1021,11 +1023,12 @@ const ICONS = {
   charges:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
   epargne:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   comptes:'<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/>',
+  analyses:'<path d="M12 3a6 6 0 0 0-3 11.2V17h6v-2.8A6 6 0 0 0 12 3z"/><path d="M9.5 20.5h5"/>',
   bilan:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   projets:'<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>'
 };
-const TABS = [['synthese','Accueil'],['depenses','Dépenses'],['charges','Charges'],['epargne','Épargne'],['comptes','Comptes'],['projets','Projets'],['bilan','Bilan annuel']];
-const TITLES = {synthese:'Accueil', depenses:'Journal des dépenses', charges:'Charges et revenus', epargne:'Épargne', comptes:'Comptes', projets:'Projets communs', bilan:'Bilan annuel'};
+const TABS = [['synthese','Accueil'],['depenses','Dépenses'],['charges','Charges'],['epargne','Épargne'],['comptes','Comptes'],['projets','Projets'],['bilan','Bilan annuel'],['analyses','Analyses']];
+const TITLES = {synthese:'Accueil', depenses:'Journal des dépenses', charges:'Charges et revenus', epargne:'Épargne', comptes:'Comptes', projets:'Projets communs', bilan:'Bilan annuel', analyses:'Analyses et conseils'};
 const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 
 function toast(msg, err){
@@ -1366,7 +1369,6 @@ function renderSynthese(){
 const ACC_KINDS = {courant:{l:'Compte courant',c:'#4FA3FF'}, epargne:{l:'Compte épargne',c:'#34D399'}, mobile:{l:'Mobile Money',c:'#FB923C'}, invest:{l:'Investissement',c:'#A78BFA'}, autre:{l:'Autre',c:'#8EA3B0'}};
 const accKind = a => ACC_KINDS[a.kind] || ACC_KINDS.autre;
 const accExp = (a, upto) => (state.expenses||[]).filter(e=>e.acc===a.id && (!upto || (e.date||'')<=upto));
-const accBal = (a, upto) => (a.start||0) + sum(a.moves||[], x=>(!upto || x.date<=upto) ? x.amount : 0) + sum(accExp(a,upto), e=>e.group==='entreeAnnexe' ? e.amount : -e.amount);
 const accTotal = upto => sum(state.accounts, a=>accBal(a,upto));
 const initials = s => (s||'?').trim().slice(0,2).toUpperCase();
 function prevMois(k){ const [y,m]=k.split('-').map(Number); const d=new Date(y,m-2,1); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
@@ -1420,13 +1422,13 @@ function renderComptes(){
   const range = ui.range||'12';
   const ser = A.length ? accSeries(range==='3'||range==='6'||range==='12'||range==='all' ? range : '12', todayKey()) : [];
   const seg = (r,l) => `<button class="${range===r?'on':''}" onclick="setRange('${r}')">${l}</button>`;
-  const hero = `<section class="panel dc"><div class="panel-head"><h2>Total des comptes</h2><button class="btn" onclick="addAccount()">+ Nouveau compte</button></div>
+  const hero = `<section class="panel dc"><div class="panel-head"><h2>Total des comptes</h2><div class="tools"><button class="btn secondary" onclick="openAffect()">Affecter salaires et charges</button><button class="btn" onclick="addAccount()">+ Nouveau compte</button></div></div>
     <div class="panel-body"><div class="big num ${tot<0?'neg':''}">${fmtN(tot)}${unit}</div>
     <div class="dl ${mvMonth>=0?'pos':'neg'}">${A.length ? (mvMonth>=0?'↗ +':'↘ ')+fmt(mvMonth)+' <span class="muted">ce mois-ci</span>' : '<span class="muted">Ajoutez vos comptes pour suivre l’argent cumulé.</span>'}</div></div></section>`;
   const chart = A.length ? `<section class="panel dc"><div class="panel-head"><h2>Argent cumulé</h2><div class="segm">${seg('3','3 mois')}${seg('6','6 mois')}${seg('12','12 mois')}${seg('all','Tout')}</div></div>
     <div class="panel-body">${chartSlot('acc', W=>areaChart(W, ser.map(s=>MS[+s.mois.slice(5)-1].replace('.','')+' '+s.mois.slice(2,4)), ser.map(s=>`${monthLong(s.mois)}\nTotal : ${fmt(s.total)}`), ser.map(s=>s.total), 'acc'))}</div></section>` : '';
   const card = a => {
-    const k = accKind(a), bal = accBal(a), open = ui.accOpen===a.id, mv = a.moves.concat(accExp(a).map(e=>({id:'e:'+e.id, date:e.date, amount:e.group==='entreeAnnexe'?e.amount:-e.amount, note:(e.note||catLabel(e.group,e.cat)), ro:true}))).sort((x,y)=>(y.date||'').localeCompare(x.date||''));
+    const k = accKind(a), bal = accBal(a), open = ui.accOpen===a.id, mv = a.moves.concat(accFlowLines(a)).concat(accExp(a).map(e=>({id:'e:'+e.id, date:e.date, amount:e.group==='entreeAnnexe'?e.amount:-e.amount, note:(e.note||catLabel(e.group,e.cat)), ro:true}))).sort((x,y)=>(y.date||'').localeCompare(x.date||''));
     const cum = sum(a.moves,x=>x.amount);
     return `<div class="acc" style="--c:${k.c}"><div class="acc-h"><span class="bank">${esc(initials(a.bank||a.name))}</span>
       <div class="acc-t"><b>${esc(a.name)}</b><small>${esc([a.bank,k.l].filter(Boolean).join(' · '))}</small></div><div class="acc-bal num ${bal<0?'neg':''}">${fmtN(bal)} <small>FCFA</small></div></div>
@@ -1665,7 +1667,7 @@ function alertsFor(mk){
 }
 function dashTop(mk){
   const al = alertsFor(mk);
-  return `<div class="dtop"><div class="dacts"><button class="btn secondary sm" onclick="openReport()">Rapport mensuel</button><button class="btn secondary sm" onclick="setTab('bilan')">Bilan annuel</button><button class="btn secondary sm" onclick="openDueDays()">Échéances</button></div>
+  return `<div class="dtop"><div class="dacts"><button class="btn secondary sm" onclick="openReport()">Rapport mensuel</button><button class="btn secondary sm" onclick="setTab('bilan')">Bilan annuel</button><button class="btn secondary sm" onclick="setTab('analyses')">Analyses et conseils</button><button class="btn secondary sm" onclick="openDueDays()">Échéances</button></div>
     ${al.length ? `<section class="alerts" role="status" aria-label="Alertes">${al.map(a=>`<div class="al ${a.lvl}"><span class="ad"></span>${esc(a.t)}</div>`).join('')}</section>` : ''}</div>`;
 }
 function openDueDays(){
@@ -1848,10 +1850,10 @@ function deleteDebt(id){
 }
 function payDebt(id){
   const d = state.debts.find(x=>x.id===id); if(!d) return;
-  formModal({title:'Remboursement : '+d.label, sub:'Reste à rembourser : '+fmt(debtLeft1(d)), fields:[{id:'a',label:'Montant remboursé (F)',type:'number',value:d.monthly||'',required:true},{id:'d',label:'Date',type:'date',value:todayStr()},{id:'n',label:'Note (facultatif)',value:''}],
+  formModal({title:'Remboursement : '+d.label, sub:'Reste à rembourser : '+fmt(debtLeft1(d)), fields:[{id:'a',label:'Montant remboursé (F)',type:'number',value:d.monthly||'',required:true},{id:'d',label:'Date',type:'date',value:todayStr()},{id:'ac',label:'Prélevé sur le compte',type:'select',value:'',options:[{v:'',l:'Aucun compte'}].concat(state.accounts.map(a=>({v:a.id,l:a.name})))},{id:'n',label:'Note (facultatif)',value:''}],
     submit:'Enregistrer', onSubmit:v=>{
       const a = Math.abs(parseFloat(v.a)||0); if(!a){ toast('Indiquez un montant.', true); return false; }
-      d.pays.push({id:'r'+uid(), date:v.d||todayStr(), amount:a, note:v.n.trim()}); ui.debtOpen = id; persist(); render(); toast('Remboursement de '+fmt(a)+' enregistré'); }});
+      d.pays.push({id:'r'+uid(), date:v.d||todayStr(), amount:a, note:v.n.trim(), acc:v.ac}); ui.debtOpen = id; persist(); render(); toast('Remboursement de '+fmt(a)+' enregistré'); }});
 }
 function deletePay(did, pid){ const d = state.debts.find(x=>x.id===did); if(!d) return; d.pays = d.pays.filter(x=>x.id!==pid); persist(); render(); toast('Remboursement supprimé'); }
 function toggleDebt(id){ ui.debtOpen = ui.debtOpen===id ? null : id; render(); }
@@ -1867,6 +1869,161 @@ function debtPanel(){
     ${D.length ? `<div class="panel-body">${D.map(card).join('')}<div class="help">Un remboursement diminue la dette. Pensez à le noter aussi dans vos charges si vous suivez la mensualité comme une dépense.</div></div>` : ''}</section>`;
 }
 
+/* ---------- Affectation des flux aux comptes ---------- */
+const AUNL = (mk,g,id) => sum(state.expenses.filter(e=>!e.acc && e.group===g && e.cat===id && (e.date||'').startsWith(mk)), e=>e.amount);
+function dueOk(mk, c){ if(mk<todayKey()) return true; if(mk>todayKey()) return false; return !(c.day>0) || c.day<=new Date().getDate(); }
+function accFlowMonth(a, m){
+  const C = state.categories, out = [], mk = m.mois, now = todayKey();
+  ['nassim','roxane'].forEach(w=>{ if(C.salaryAcc && C.salaryAcc[w]===a.id && mk<=now){ const v = (m.salaire&&m.salaire[w])||0; if(v) out.push({k:'Salaires', label:'Salaire '+(w==='nassim'?'Nassim':'Roxane'), amount:v}); } });
+  C.entreeAnnexe.forEach(c=>{ if(c.acc===a.id && mk<=now){ const v = ((m.entreeAnnexe&&m.entreeAnnexe[c.id])||0)+AUNL(mk,'entreeAnnexe',c.id); if(v) out.push({k:'Revenus annexes', label:c.label, amount:v}); } });
+  ['chargesFixes','chargesVariables'].forEach(g=>C[g].forEach(c=>{ if(c.acc===a.id && dueOk(mk,c)){ const v = ((m[g]&&m[g][c.id])||0)+AUNL(mk,g,c.id); if(v) out.push({k:'Charges', label:c.label, amount:-v}); } }));
+  if(mk<=now){ const ep = ((m.epargne&&m.epargne.nassim)||0)+((m.epargne&&m.epargne.roxane)||0);
+    if(ep){ if(C.epargneAcc===a.id) out.push({k:'Épargne versée', label:'Épargne', amount:ep}); if(C.epargneFrom===a.id) out.push({k:'Épargne mise de côté', label:'Épargne', amount:-ep}); } }
+  return out;
+}
+function accFlowTotal(a, upto){
+  const f = state.categories.flowFrom; if(!f) return 0; const mk = upto ? upto.slice(0,7) : todayKey();
+  return sum(state.months.filter(m=>m.mois>=f && m.mois<=mk), m=>sum(accFlowMonth(a,m),x=>x.amount));
+}
+const accDebtPays = (a, upto) => (state.debts||[]).flatMap(d=>d.pays.filter(p=>p.acc===a.id && (!upto || (p.date||'')<=upto)).map(p=>({...p, debt:d.label})));
+function accFlowLines(a){
+  const f = state.categories.flowFrom, out = [];
+  if(f) state.months.filter(m=>m.mois>=f && m.mois<=todayKey()).forEach(m=>{
+    const by = {}; accFlowMonth(a,m).forEach(x=>{ by[x.k] = (by[x.k]||0)+x.amount; });
+    Object.entries(by).forEach(([k,v])=>out.push({id:'f:'+m.mois+k, date:m.mois+'-01', amount:v, note:k+' (auto)', ro:true})); });
+  accDebtPays(a).forEach(p=>out.push({id:'p:'+p.id, date:p.date, amount:-p.amount, note:'Remboursement '+p.debt, ro:true}));
+  return out;
+}
+const accBal = (a, upto) => (a.start||0) + sum(a.moves||[], x=>(!upto || x.date<=upto) ? x.amount : 0) + sum(accExp(a,upto), e=>e.group==='entreeAnnexe' ? e.amount : -e.amount) + accFlowTotal(a,upto) - sum(accDebtPays(a,upto), p=>p.amount);
+
+function openAffect(){
+  const C = state.categories;
+  if(!state.accounts.length){ toast('Ajoutez d’abord un compte.', true); return; }
+  const opt = v => `<option value="">Aucun (non suivi)</option>`+state.accounts.map(a=>`<option value="${a.id}" ${a.id===v?'selected':''}>${esc(a.name)}</option>`).join('');
+  const sel = (id, v, label) => `<div class="field"><label for="af_${id}">${esc(label)}</label><select id="af_${id}" data-aff="${id}">${opt(v)}</select></div>`;
+  const grp = (g,t) => C[g].length ? `<div class="sect"><h4>${t}</h4><div class="fgrid">${C[g].map(c=>sel(g+'|'+c.id, c.acc||'', c.label)).join('')}</div></div>` : '';
+  const mo = openModal(`<h3>Affectation aux comptes</h3><p class="sub">Choisissez de quel compte chaque charge est prélevée et sur quel compte arrivent salaires et épargne. Les soldes des comptes se mettent alors à jour tout seuls, mois après mois.</p>
+    <div class="sect"><h4>À partir de quand ?</h4><div class="fgrid"><div class="field"><label for="af_from">Mois de départ</label><input id="af_from" type="month" value="${C.flowFrom||todayKey()}"><div class="help">Le solde saisi pour chaque compte doit être celui du début de ce mois.</div></div>
+    <div class="field"><label for="af_all">Raccourci : toutes les charges sur</label><select id="af_all">${opt('')}</select><div class="help">Remplit d’un coup toutes les charges ci-dessous.</div></div></div></div>
+    <div class="sect"><h4>Salaires reçus sur</h4><div class="fgrid">${sel('sal|nassim', (C.salaryAcc||{}).nassim||'', 'Salaire Nassim')}${sel('sal|roxane', (C.salaryAcc||{}).roxane||'', 'Salaire Roxane')}</div></div>
+    ${grp('entreeAnnexe','Revenus annexes reçus sur')}${grp('chargesFixes','Charges fixes prélevées sur')}${grp('chargesVariables','Charges variables prélevées sur')}
+    <div class="sect"><h4>Épargne</h4><div class="fgrid">${sel('ep|from', C.epargneFrom||'', 'Prélevée sur')}${sel('ep|to', C.epargneAcc||'', 'Versée sur')}</div></div>
+    <div class="actions"><button class="btn secondary" data-close>Annuler</button><button class="btn" id="afSave">Enregistrer</button></div>`, {wide:true});
+  mo.q('#af_all').onchange = e=>{ if(!e.target.value) return; mo.qa('select[data-aff^="chargesFixes"],select[data-aff^="chargesVariables"]').forEach(s=>{ s.value = e.target.value; }); };
+  mo.q('#afSave').onclick = ()=>{
+    let any = false; C.salaryAcc = C.salaryAcc||{nassim:'',roxane:''};
+    mo.qa('select[data-aff]').forEach(s=>{ const [a,b] = s.dataset.aff.split('|'), v = s.value; if(v) any = true;
+      if(a==='sal') C.salaryAcc[b] = v; else if(a==='ep'){ if(b==='from') C.epargneFrom = v; else C.epargneAcc = v; }
+      else { const c = C[a].find(x=>x.id===b); if(c) c.acc = v; } });
+    C.flowFrom = any ? (mo.q('#af_from').value || todayKey()) : '';
+    persist(); mo.close(); render(); toast(any ? 'Affectation enregistrée : soldes mis à jour' : 'Affectation retirée'); };
+}
+
+/* ---------- Analyses et conseils ---------- */
+function anaData(mk){
+  const all = sortedMonths().filter(m=>m.mois<=mk), T = all.map(m=>({m, t:totalsFor(m)})), act = T.filter(x=>x.t.revenus>0||x.t.charges>0), last3 = act.slice(-3);
+  const avg = k => last3.length ? sum(last3,x=>x.t[k])/last3.length : 0;
+  const A = state.accounts.map(a=>({a, bal:Math.max(0,accBal(a, mk+'-31')), kind:a.kind||'autre', bank:(a.bank||'').trim()||'Sans établissement'}));
+  const by = k => sum(A.filter(x=>x.kind===k), x=>x.bal);
+  const hasAcc = A.length>0, total = hasAcc ? sum(A,x=>x.bal) : Math.max(0,cumulAt(mk).both);
+  const cash = by('courant')+by('mobile'), savings = by('epargne'), invest = by('invest'), other = by('autre');
+  const chg = avg('charges'), rev = avg('revenus'), ep = avgSaving(mk), debt = debtsLeft(), net = total-debt;
+  const safe = hasAcc ? cash+savings : total, months = chg>0 ? safe/chg : null;
+  return {all, act, last3, avgChg:chg, avgRev:rev, avgEp:ep, hasAcc, total, cash, savings, invest, other, debt, net, safe, months, A, tauxEp: rev>0?ep/rev*100:null};
+}
+function anaInsights(d, mk){
+  const out = [], push = (lvl,title,text) => out.push({lvl,title,text}), f = x=>fmt(Math.round(x));
+  if(d.months!=null){
+    const need = Math.max(0, 6*d.avgChg - d.safe);
+    if(d.months<3) push('r','Matelas de sécurité insuffisant', `Vous avez ${d.months.toFixed(1).replace('.',',')} mois de dépenses de côté (objectif : 6). Priorité n°1 avant tout investissement : il manque ${f(need)}${d.avgEp>0?', soit environ '+Math.ceil(need/d.avgEp)+' mois au rythme actuel ('+f(d.avgEp)+' par mois).':'.'} Placez-le sur un compte d’épargne disponible à tout moment.`);
+    else if(d.months<6) push('o','Matelas de sécurité à compléter', `${d.months.toFixed(1).replace('.',',')} mois de dépenses de côté. Visez 6 mois : encore ${f(need)} à mettre de côté sur un compte disponible, avant d’investir sur le long terme.`);
+    else push('g','Matelas de sécurité solide', `${d.months.toFixed(1).replace('.',',')} mois de dépenses de côté : l’objectif de 6 mois est atteint. Le surplus peut être investi.`);
+  }
+  if(d.tauxEp!=null){
+    if(d.tauxEp<10) push('r','Taux d’épargne faible', `Vous épargnez ${Math.round(d.tauxEp)} % de vos revenus. Cherchez à atteindre 10 % puis 20 % : commencez par automatiser un virement le jour du salaire.`);
+    else if(d.tauxEp<20) push('o','Taux d’épargne correct', `${Math.round(d.tauxEp)} % de vos revenus sont épargnés. Passer à 20 % accélère nettement vos projets (maison, voiture).`);
+    else push('g','Excellent taux d’épargne', `${Math.round(d.tauxEp)} % de vos revenus sont épargnés, au-dessus de l’objectif de 20 %.`);
+  }
+  if(d.debt>0 && d.avgRev>0){ const r = debtsMonthly()/d.avgRev*100;
+    if(r>33) push('r','Endettement élevé', `Vos mensualités représentent ${Math.round(r)} % de vos revenus (seuil conseillé : 33 %). Évitez de nouvelles dettes et remboursez en priorité les plus coûteuses.`);
+    else push('g','Endettement maîtrisé', `Vos mensualités représentent ${Math.round(r)} % de vos revenus, sous le seuil de 33 %.`); }
+  if(d.hasAcc && d.avgChg>0){ const idle = d.cash - 1.5*d.avgChg;
+    if(idle>0.25*d.avgChg) push('o','Argent qui dort sur vos comptes courants', `Environ ${f(idle)} dorment sur des comptes courants ou du mobile money, sans rendement alors que l’inflation grignote leur valeur. Gardez environ 1,5 mois de dépenses en courant, placez le reste sur un compte d’épargne rémunéré ou un dépôt à terme.`); }
+  if(d.hasAcc && d.total>0){ const bank = {}; d.A.forEach(x=>{ bank[x.bank] = (bank[x.bank]||0)+x.bal; }); const top = Object.entries(bank).sort((a,b)=>b[1]-a[1])[0];
+    if(top && Object.keys(bank).length>0 && top[1]/d.total>0.7 && d.total>2*d.avgChg) push('o','Argent concentré dans un seul établissement', `${Math.round(top[1]/d.total*100)} % de votre argent est chez ${top[0]}. Répartir sur 2 établissements (ou ajouter un support différent) limite le risque.`); }
+  if(d.hasAcc && d.total>0 && d.invest===0 && d.months!=null && d.months>=6) push('i','Aucun placement long terme', 'Votre matelas est constitué mais rien n’est investi à long terme. Voir les pistes d’investissement plus bas.');
+  // tendances
+  const cur = d.all.slice(-1)[0], prev = d.all.slice(-4,-1);
+  if(cur && prev.length){ const em = eff(cur), trend = [];
+    ['chargesFixes','chargesVariables'].forEach(g=>state.categories[g].forEach(c=>{ const v = parseFloat(em[g][c.id])||0, pa = sum(prev,m=>parseFloat(eff(m)[g][c.id])||0)/prev.length; if(v>1.3*pa && v-pa>=20000) trend.push({l:c.label, v, pa}); }));
+    trend.sort((a,b)=>(b.v-b.pa)-(a.v-a.pa)).slice(0,3).forEach(t=>push('o','Dépense en hausse : '+t.l, `${f(t.v)} ce mois-ci contre ${f(t.pa)} en moyenne sur les 3 mois précédents (+${Math.round((t.v/t.pa-1)*100)} %).`)); }
+  const over = budgetRows(cur||{}).filter(r=>r.b>0 && r.s>r.b); if(cur && over.length) push('o','Budgets dépassés', over.slice(0,3).map(r=>r.label+' (+'+f(r.s-r.b)+')').join(', ')+'.');
+  // revenus exceptionnels sur l'année
+  const yr = mk.slice(0,4), ym = d.act.filter(x=>x.m.mois.startsWith(yr)); const rev = sum(ym,x=>x.t.revenus), exc = sum(ym,x=>x.t.revenus-x.t.totalSalaire);
+  if(rev>0 && exc/rev>0.25) push('i','Part importante de revenus exceptionnels', `${Math.round(exc/rev*100)} % de vos revenus ${yr} sont des primes, congés ou autres revenus non réguliers. Construisez votre budget sur les salaires, et placez en priorité ces rentrées exceptionnelles.`);
+  // projets avec échéance
+  const F = projFunding(mk); projOrder().forEach(p=>{ const fu = F[p.id]; if(!p.target || fu.target<=0 || fu.pct>=100 || p.target<=mk) return;
+    const n = Math.max(1, (+p.target.slice(0,4)-+mk.slice(0,4))*12 + (+p.target.slice(5)-+mk.slice(5))), need = (fu.target-fu.funded)/n;
+    push(d.avgEp>0 && need>d.avgEp*1.2 ? 'o' : 'i', 'Projet « '+p.title+' »', `Pour être financé en ${monthLong(p.target)}, il faut mettre ${f(need)} de côté par mois${d.avgEp>0?' (vous épargnez '+f(d.avgEp)+' en moyenne pour tous vos projets)':''}.`); });
+  return out;
+}
+function fvCalc(P, C, ratePct, years){
+  const n = Math.round(years*12), r = Math.pow(1+ratePct/100, 1/12)-1;
+  return r===0 ? P + C*n : P*Math.pow(1+r,n) + C*(Math.pow(1+r,n)-1)/r;
+}
+const ANA_RATES = [[0,'Sans placement (0 %)','#94A3B8'],[4,'Épargne / dépôt à terme (4 %)','#4FA3FF'],[6.5,'Obligations et bons du Trésor (6,5 %)','#34D399'],[9,'Mix actions / FCP (9 %)','#A78BFA']];
+function anaProjHtml(P, C, years, W){
+  const labels = [], series = ANA_RATES.map(([r,n,c])=>({name:n,color:c,values:[]}));
+  for(let y=0;y<=years;y++){ labels.push(y===0?'Auj.':y+' an'+(y>1?'s':'')); ANA_RATES.forEach(([r],i)=>series[i].values.push(Math.round(fvCalc(P,C,r,y)))); }
+  const tips = labels.map((l,i)=>l+'\n'+ANA_RATES.map(([r,n],j)=>n+' : '+fmt(series[j].values[i])).join('\n'));
+  const last = series.map(s=>s.values[s.values.length-1]);
+  return `<div class="tbl"><table class="bt"><thead><tr><th>Hypothèse de rendement</th><th class="r">${years} an${years>1?'s':''}</th><th class="r">Gain</th></tr></thead><tbody>${ANA_RATES.map(([r,n],i)=>`<tr><td>${n}</td><td class="r num">${fmtN(last[i])} F</td><td class="r num ${last[i]-last[0]>0?'pos':''}">${last[i]-last[0]>0?'+':''}${fmtN(last[i]-last[0])}</td></tr>`).join('')}</tbody></table></div>`
+    + `<div style="margin-top:12px">${linesChart(W, labels, tips, series)}</div>`;
+}
+function anaRun(){
+  const P = Math.max(0, parseFloat($('#anaP').value)||0), C = Math.max(0, parseFloat($('#anaC').value)||0), y = Math.min(30, Math.max(1, parseInt($('#anaY').value)||10));
+  ui.anaC = C; ui.anaY = y; const el = $('#anaOut'); if(el) el.innerHTML = anaProjHtml(P, C, y, Math.max(260, el.clientWidth||600));
+}
+function renderAnalyses(){
+  const mk = pickMonth()||todayKey(), d = anaData(mk), ins = anaInsights(d, mk), f = x=>fmt(Math.round(x));
+  const C0 = Math.round(ui.anaC!=null ? ui.anaC : d.avgEp), Y0 = ui.anaY||10;
+  const kind = (k,l,v,c) => ({l,v,c});
+  const alloc = [kind('liq','Liquidités (courant, mobile money)',d.cash,'#4FA3FF'), kind('ep','Épargne disponible',d.savings,'#34D399'), kind('inv','Investissements',d.invest,'#A78BFA'), kind('au','Autres',d.other,'#FB923C')].filter(x=>x.v>0);
+  const totA = sum(alloc,x=>x.v)||1;
+  const icon1 = {g:'Bien',o:'À surveiller',r:'Priorité',i:'Info'};
+  const surplus = d.months!=null && d.months>=6 ? Math.max(0, d.safe - 6*d.avgChg) : 0;
+  const needSoon = sum(projOrder().filter(p=>p.target && p.target<=addMonths(mk,24)), p=>{ const f1 = projFunding(mk)[p.id]; return Math.max(0, f1.target-f1.funded); });
+  const invest = Math.max(0, surplus - needSoon);
+  const plan = d.months==null ? null : d.months<6 ? [['Épargne disponible (matelas de sécurité)',100,'Compte d’épargne ou livret, disponible à tout moment']] : [['Sécurité (dépôt à terme, bons du Trésor 364 jours)',50,'Capital protégé, horizon 1 à 3 ans'],['Obligations (OAT 3 à 7 ans, FCP obligataire)',30,'Rendement régulier, horizon 3 à 7 ans'],['Actions BRVM, FCP actions, immobilier',20,'Croissance, horizon supérieur à 8 ans, risque de perte']];
+  const horizons = projOrder().filter(p=>p.target && projTarget(p)>0).map(p=>{ const n = (+p.target.slice(0,4)-+mk.slice(0,4))*12 + (+p.target.slice(5)-+mk.slice(5));
+    const v = n<=12 ? 'Compte d’épargne, dépôt à terme ou bon du Trésor 364 jours' : n<=36 ? 'Dépôt à terme, bons du Trésor, obligations 3 ans' : n<=84 ? 'Obligations 5 à 7 ans, FCP obligataire' : 'FCP actions, actions BRVM, immobilier';
+    return `<div class="fact"><span>${esc(p.title)}<small class="muted"> · ${monthLong(p.target)}</small></span><b style="max-width:58%;text-align:right">${v}</b></div>`; }).join('');
+  const insHtml = ins.length ? ins.map(x=>`<div class="ins ${x.lvl}"><span class="hd ${x.lvl==='i'?'na':x.lvl}"></span><div><b>${esc(x.title)}</b> <span class="pilltxt">${icon1[x.lvl]}</span><div class="help" style="margin:2px 0 0">${esc(x.text)}</div></div></div>`).join('') : '<div class="empty">Pas assez de données pour analyser. Saisissez quelques mois.</div>';
+  const kc = (l,v,c,ic,sub) => kcard(l, v, c, ic, `<div class="dl muted">${sub}</div>`, '');
+  $('#main').innerHTML = `<div class="dash">
+    <div class="kcards">
+      ${kc('Patrimoine net', d.net, '#4FA3FF', 'wallet', d.debt>0?'après '+fmtN(d.debt)+' F de dettes':'aucune dette')}
+      ${kc('Épargne moyenne / mois', d.avgEp, '#34D399', 'coins', 'sur les 3 derniers mois')}
+      ${kc('Dépenses moyennes / mois', d.avgChg, '#FB7185', 'card', 'sur les 3 derniers mois')}
+      ${kc('Surplus investissable', invest, '#A78BFA', 'pie', d.months!=null&&d.months<6?'après le matelas de 6 mois':'après matelas et projets à 2 ans')}
+    </div>
+    <div class="dgrid a"><section class="panel dc"><div class="panel-head"><h2>Analyse de votre situation</h2><span class="sub">${monthLong(mk)}</span></div><div class="panel-body">${insHtml}</div></section>
+      <section class="panel dc"><div class="panel-head"><h2>Répartition du patrimoine</h2></div><div class="panel-body">
+      ${alloc.length ? alloc.map(x=>`<div class="cr wide"><span class="nm">${esc(x.l)}</span><div class="bar"><i style="width:${(x.v/totA*100).toFixed(1)}%;background:${x.c}"></i></div><span class="pc num">${Math.round(x.v/totA*100)} %</span></div>`).join('')+`<div class="help" style="margin-top:10px">Total ${fmt(sum(alloc,x=>x.v))}. Vous pouvez affecter chaque compte à un type (courant, épargne, investissement) dans la page Comptes.</div>` : '<div class="empty">Ajoutez vos comptes pour voir la répartition.</div>'}</div></section></div>
+    <div class="dgrid c1"><section class="panel dc"><div class="panel-head"><div><h2>Projection de votre patrimoine</h2><div class="sub">Que devient votre argent selon le rendement obtenu ? Hypothèses, pas des promesses.</div></div></div><div class="panel-body">
+      <div class="fgrid" style="margin-bottom:12px"><div class="field"><label for="anaP">Capital de départ (F)</label><input id="anaP" type="number" inputmode="decimal" value="${Math.round(d.net)}" oninput="anaRun()"></div>
+      <div class="field"><label for="anaC">Épargne par mois (F)</label><input id="anaC" type="number" inputmode="decimal" value="${C0}" oninput="anaRun()"></div>
+      <div class="field"><label for="anaY">Durée (années)</label><input id="anaY" type="number" inputmode="numeric" min="1" max="30" value="${Y0}" oninput="anaRun()"></div></div>
+      <div id="anaOut">${chartSlot('ana', W=>anaProjHtml(Math.round(d.net), C0, Y0, W))}</div></div></section></div>
+    <div class="dgrid c2"><section class="panel dc"><div class="panel-head"><h2>Où placer votre argent ?</h2></div><div class="panel-body">
+      ${plan ? `<div class="help" style="margin:0 0 10px">${d.months<6 ? 'Votre matelas de sécurité passe avant tout placement. Voici l’ordre conseillé :' : 'Répartition indicative de votre surplus de '+fmt(invest)+' :'}</div>`+plan.map(([l,p,t])=>`<div class="fact"><span>${l}<small class="muted" style="display:block">${t}</small></span><b>${p} %${invest>0&&p<100?'<br><small class="muted">'+fmtN(invest*p/100)+' F</small>':''}</b></div>`).join('') : '<div class="empty">Saisissez vos dépenses pour obtenir une répartition.</div>'}
+      ${horizons ? `<h4 style="margin:16px 0 4px;font-size:13px">Selon l’échéance de vos projets</h4>${horizons}` : ''}</div></section>
+      <section class="panel dc"><div class="panel-head"><h2>Les supports d’investissement</h2></div><div class="panel-body">
+      ${[['Compte d’épargne / livret','Disponible à tout moment, très faible risque. Pour le matelas de sécurité.'],['Dépôt à terme (DAT)','Argent bloqué 1 à 5 ans à taux connu à l’avance. Pour un projet à échéance fixe.'],['Bons du Trésor (BAT 364 jours) et obligations (OAT 3, 5, 7 ans)','Prêt à l’État via le marché UMOA-Titres, souscription par votre banque ou une SGI. Rendement régulier, risque faible.'],['FCP / SICAV','Fonds géré par des professionnels, accessible dès de petits montants. Diversifie automatiquement.'],['Actions BRVM','Parts d’entreprises de la région, dividendes possibles. Risque de perte, à garder 8 ans et plus.'],['Immobilier / terrain','Peut rapporter un loyer ou prendre de la valeur, mais peu liquide. Cohérent avec votre projet de construction.']].map(([t,x])=>`<div class="fact"><span><b>${t}</b><small class="muted" style="display:block">${x}</small></span></div>`).join('')}</div></section></div>
+    <div class="help" style="padding:0 4px 8px">Ces analyses sont indicatives et pédagogiques : elles ne constituent pas un conseil financier personnalisé. Les rendements indiqués sont des hypothèses, jamais garanties, et les taux varient : vérifiez-les auprès de votre banque ou d’une société de gestion et d’intermédiation (SGI) agréée avant tout placement. Ne mettez jamais tout sur un seul support.</div></div>`;
+}
+function addMonths(mk, n){ let k = mk; for(let i=0;i<n;i++) k = nextMois(k); return k; }
+
 /* ---------- Page : orchestration ---------- */
 function renderBanner(){
   const el = $('#syncBanner'); if(!el) return;
@@ -1881,11 +2038,11 @@ function render(){
   $('#topMonth').innerHTML = home && pickMonth() ? `<select id="monthSel" aria-label="Mois">${sortedMonths().map(x=>`<option value="${x.mois}" ${x.mois===pickMonth()?'selected':''}>${monthLabel(x.mois)}</option>`).join('')}</select>` : ''; bindMonthSel();
   if(home) $('#q').value = ui.q||'';
   document.querySelectorAll('[data-tab]').forEach(b=>{ const on=b.dataset.tab===ui.tab; b.classList.toggle('active',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  $('#yearSel').style.display = (home||ui.tab==='projets'||ui.tab==='depenses'||ui.tab==='comptes') ? 'none' : '';
+  $('#yearSel').style.display = (home||ui.tab==='projets'||ui.tab==='depenses'||ui.tab==='comptes'||ui.tab==='analyses') ? 'none' : '';
   const ys = years(); if(ui.year!=='all' && !ys.includes(ui.year)) ui.year = ys.includes(String(new Date().getFullYear())) ? String(new Date().getFullYear()) : (ys[ys.length-1]||'all');
   $('#yearSel').innerHTML = `<option value="all">Toutes les années</option>` + ys.map(y=>`<option value="${y}" ${ui.year===y?'selected':''}>${y}</option>`).join('');
   $('#yearSel').value = ui.year;
-  ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, comptes:renderComptes, projets:renderProjets, bilan:renderBilan})[ui.tab]();
+  ({synthese:renderSynthese, depenses:renderDepenses, charges:renderCharges, epargne:renderEpargne, comptes:renderComptes, projets:renderProjets, bilan:renderBilan, analyses:renderAnalyses})[ui.tab]();
   const banner = `<div class="banner" id="syncBanner" role="status"><span><b>Données non partagées.</b> Elles sont enregistrées uniquement sur cet appareil. Connectez-vous pour que Nassim et Roxane voient les mêmes informations.</span><button class="btn secondary sm" onclick="openLogin()">Se connecter</button></div>`;
   $('#main').insertAdjacentHTML('afterbegin', banner);
   renderBanner(); mountCharts(); renderChrome();
@@ -2266,11 +2423,11 @@ function boot(){
   if(!ui.year) ui.year = String(new Date().getFullYear());
   state = localLoad(); lastHash = snapshot(state);
   if(!localStorage.getItem(LS.state)) localSave();
-  const NL = {synthese:"Vue d'ensemble"};
+  const NL = {synthese:"Vue d'ensemble", analyses:'Analyses & conseils'};
   const navHtml = '<div class="nsec">Gestion financière</div>' + TABS.map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${NL[k]||l}</span></button>`).join('')
-    + `<div class="nsec">Paramètres</div><button onclick="openCategoryManager()">${dic('tag')}<span>Catégories</span></button><button onclick="openSettings()">${dic('cog')}<span>Paramètres</span></button>`;
+    + `<div class="nsec">Paramètres</div><button onclick="openCategoryManager()">${dic('tag')}<span>Catégories</span></button><button onclick="openAffect()">${dic('card')}<span>Affectation aux comptes</span></button><button onclick="openSettings()">${dic('cog')}<span>Paramètres</span></button>`;
   $('#nav').innerHTML = navHtml;
-  const tbs = TABS.filter(t=>t[0]!=='bilan').map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${l}</span></button>`);
+  const tbs = TABS.filter(t=>t[0]!=='bilan' && t[0]!=='analyses').map(([k,l])=>`<button data-tab="${k}" onclick="setTab('${k}')">${icon(k)}<span>${l}</span></button>`);
   tbs.splice(2,0,'<button class="plus" onclick="openQuickAdd()" aria-label="Nouvelle opération"><span class="fab">+</span></button>');
   $('#tabbar').innerHTML = tbs.join('');
   document.querySelectorAll('img.logo-img').forEach(i=>{ i.src = LOGO; });
