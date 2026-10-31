@@ -696,7 +696,7 @@ function normalize(s){
     entreeAnnexe:{...(m.entreeAnnexe||{})}, chargesFixes:{...(m.chargesFixes||{})}, chargesVariables:{...(m.chargesVariables||{})},
     epargne:{nassim:0,roxane:0,both:0,...(m.epargne||{})}
   }));
-  o.expenses = asArray(o.expenses).map(e=>({id:e.id, date:e.date||'', amount:+e.amount||0, group:e.group||'chargesVariables', cat:e.cat||'', who:e.who||'', note:e.note||'', _u:e._u||0}));
+  o.expenses = asArray(o.expenses).map(e=>({id:e.id, date:e.date||'', amount:+e.amount||0, group:e.group||'chargesVariables', cat:e.cat||'', who:e.who||'', note:e.note||'', acc:e.acc||'', _u:e._u||0}));
   o.projects = asArray(o.projects).map(p=>({id:p.id, title:p.title||'', target:p.target||'', img:p.img||'', budget:+p.budget||0, prio:+p.prio||0, acc:p.acc||'', kind:p.kind||'', _u:p._u||0,
     items:asArray(p.items).map(i=>({id:i.id, label:i.label||'', amount:+i.amount||0, checked:!!i.checked, paid:+i.paid||0, st:i.st||''}))}));
   o.accounts = asArray(o.accounts).map(a=>({id:a.id, name:a.name||'', bank:a.bank||'', kind:a.kind||'courant', start:+a.start||0, _u:a._u||0, moves:asArray(a.moves).map(x=>({id:x.id, date:x.date||'', amount:+x.amount||0, note:x.note||''}))}));
@@ -1331,7 +1331,8 @@ function renderSynthese(){
 /* ---------- Comptes ---------- */
 const ACC_KINDS = {courant:{l:'Compte courant',c:'#4FA3FF'}, epargne:{l:'Compte épargne',c:'#34D399'}, mobile:{l:'Mobile Money',c:'#FB923C'}, invest:{l:'Investissement',c:'#A78BFA'}, autre:{l:'Autre',c:'#8EA3B0'}};
 const accKind = a => ACC_KINDS[a.kind] || ACC_KINDS.autre;
-const accBal = (a, upto) => (a.start||0) + sum(a.moves||[], x=>(!upto || x.date<=upto) ? x.amount : 0);
+const accExp = (a, upto) => (state.expenses||[]).filter(e=>e.acc===a.id && (!upto || (e.date||'')<=upto));
+const accBal = (a, upto) => (a.start||0) + sum(a.moves||[], x=>(!upto || x.date<=upto) ? x.amount : 0) + sum(accExp(a,upto), e=>e.group==='entreeAnnexe' ? e.amount : -e.amount);
 const accTotal = upto => sum(state.accounts, a=>accBal(a,upto));
 const initials = s => (s||'?').trim().slice(0,2).toUpperCase();
 function prevMois(k){ const [y,m]=k.split('-').map(Number); const d=new Date(y,m-2,1); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
@@ -1391,7 +1392,7 @@ function renderComptes(){
   const chart = A.length ? `<section class="panel dc"><div class="panel-head"><h2>Argent cumulé</h2><div class="segm">${seg('3','3 mois')}${seg('6','6 mois')}${seg('12','12 mois')}${seg('all','Tout')}</div></div>
     <div class="panel-body">${chartSlot('acc', W=>areaChart(W, ser.map(s=>MS[+s.mois.slice(5)-1].replace('.','')+' '+s.mois.slice(2,4)), ser.map(s=>`${monthLong(s.mois)}\nTotal : ${fmt(s.total)}`), ser.map(s=>s.total), 'acc'))}</div></section>` : '';
   const card = a => {
-    const k = accKind(a), bal = accBal(a), open = ui.accOpen===a.id, mv = a.moves.slice().sort((x,y)=>(y.date||'').localeCompare(x.date||''));
+    const k = accKind(a), bal = accBal(a), open = ui.accOpen===a.id, mv = a.moves.concat(accExp(a).map(e=>({id:'e:'+e.id, date:e.date, amount:e.group==='entreeAnnexe'?e.amount:-e.amount, note:(e.note||catLabel(e.group,e.cat)), ro:true}))).sort((x,y)=>(y.date||'').localeCompare(x.date||''));
     const cum = sum(a.moves,x=>x.amount);
     return `<div class="acc" style="--c:${k.c}"><div class="acc-h"><span class="bank">${esc(initials(a.bank||a.name))}</span>
       <div class="acc-t"><b>${esc(a.name)}</b><small>${esc([a.bank,k.l].filter(Boolean).join(' · '))}</small></div><div class="acc-bal num ${bal<0?'neg':''}">${fmtN(bal)} <small>FCFA</small></div></div>
@@ -1399,7 +1400,7 @@ function renderComptes(){
       <div class="acc-act"><button class="btn sm" onclick="addMove('${a.id}',1)">+ Versement</button><button class="btn secondary sm" onclick="addMove('${a.id}',-1)">Retrait</button>
         <button class="btn secondary sm" onclick="toggleMoves('${a.id}')">Historique (${mv.length})</button>
         <button class="btn secondary sm" onclick="editAccount('${a.id}')">Modifier</button><button class="btn danger sm" onclick="deleteAccount('${a.id}')">Supprimer</button></div>
-      ${open ? `<div class="mvs">${mv.length ? mv.map(x=>`<div class="mv"><span class="tx-d">${fullDate(x.date)}</span><span class="mv-n">${esc(x.note||(x.amount>0?'Versement':'Retrait'))}</span><span class="num ${x.amount>0?'pos':''}">${x.amount>0?'+ ':'− '}${fmtN(Math.abs(x.amount))}</span><button class="btn danger sm icon" onclick="deleteMove('${a.id}','${x.id}')" aria-label="Supprimer ce mouvement">×</button></div>`).join('') : '<div class="empty" style="padding:12px 0">Aucun mouvement. Ajoutez un versement.</div>'}</div>` : ''}</div>`;
+      ${open ? `<div class="mvs">${mv.length ? mv.map(x=>`<div class="mv"><span class="tx-d">${fullDate(x.date)}</span><span class="mv-n">${esc(x.note||(x.amount>0?'Versement':'Retrait'))}</span><span class="num ${x.amount>0?'pos':''}">${x.amount>0?'+ ':'− '}${fmtN(Math.abs(x.amount))}</span>${x.ro?'<span class="muted" style="font-size:11px" title="Opération liée">op.</span>':`<button class="btn danger sm icon" onclick="deleteMove('${a.id}','${x.id}')" aria-label="Supprimer ce mouvement">×</button>`}</div>`).join('') : '<div class="empty" style="padding:12px 0">Aucun mouvement. Ajoutez un versement.</div>'}</div>` : ''}</div>`;
   };
   $('#main').innerHTML = `<div class="dash">${hero}${chart}${A.length ? `<div class="accgrid">${A.map(card).join('')}</div>` : `<div class="panel"><div class="empty">Aucun compte pour le moment.<br><br><button class="btn" onclick="addAccount()">Ajouter le premier compte</button></div></div>`}</div>`;
 }
@@ -1920,6 +1921,7 @@ function openQuickAdd(){
     <div class="fgrid" style="margin-top:18px">
       <div class="field"><label>Qui ?</label><div class="seg" id="qw"><button type="button" data-w="Nassim">Nassim</button><button type="button" data-w="Roxane">Roxane</button></div></div>
       <div class="field"><label for="qd">Date</label><input id="qd" type="date" value="${todayStr()}"></div></div>
+    ${state.accounts.length?`<div class="field" style="margin-top:12px"><label for="qac">Compte débité / crédité</label><select id="qac"><option value="">Aucun compte</option>${state.accounts.map(a=>`<option value="${a.id}" ${a.id===ui.lastAcc?'selected':''}>${esc(a.name)} (${fmtN(accBal(a))} F)</option>`).join('')}</select></div>`:''}
     <div class="field" style="margin-top:12px"><label for="qn">Note (facultatif)</label><input id="qn" type="text" placeholder="Ex. Marché, taxi, restaurant" autocomplete="off"></div>
     <div class="actions"><button type="button" class="btn secondary" data-close>Annuler</button><button type="button" class="btn" id="qs" disabled>Ajouter</button></div>`);
   const amount = () => { const v = parseFloat(mo.q('#qa').value.replace(/\s/g,'').replace(',','.')); return isFinite(v) ? v : 0; };
@@ -1938,7 +1940,8 @@ function openQuickAdd(){
     const date = mo.q('#qd').value, a = amount(), month = date.slice(0,7);
     if(!(a>0) || !cat) return;
     if(!state.months.some(x=>x.mois===month)){ const nm = emptyMonth(month); applyRecTo(nm); state.months.push(nm); }
-    state.expenses.push({id:'e'+uid(), date, amount:a, group:cat.g, cat:cat.id, who, note:mo.q('#qn').value.trim(), _u:0});
+    state.expenses.push({id:'e'+uid(), date, amount:a, group:cat.g, cat:cat.id, who, note:mo.q('#qn').value.trim(), acc:(mo.q('#qac')?mo.q('#qac').value:''), _u:0});
+    ui.lastAcc = mo.q('#qac') ? mo.q('#qac').value : '';
     ui.month = month; persist(); mo.close(); render();
     toast((kind==='out'?'Dépense':'Revenu')+' de '+fmt(a)+' ajouté : '+catLabel(cat.g,cat.id));
   };
@@ -1959,13 +1962,14 @@ function editExpense(id){
     {id:'c',label:'Catégorie',type:'select',options:opts,value:cur},
     {id:'w',label:'Qui ?',type:'select',options:[{v:'Nassim',l:'Nassim'},{v:'Roxane',l:'Roxane'}],value:e.who||'Nassim'},
     {id:'d',label:'Date',type:'date',value:e.date},
+    {id:'ac',label:'Compte',type:'select',value:e.acc||'',options:[{v:'',l:'Aucun compte'}].concat(state.accounts.map(a=>({v:a.id,l:a.name})))},
     {id:'n',label:'Note',value:e.note||''}],
     onSubmit:v=>{
       const a = parseFloat(v.a)||0; if(!(a>0)){ toast('Indiquez un montant.', true); return false; }
       if(!/^\d{4}-\d{2}-\d{2}$/.test(v.d)){ toast('Indiquez une date valide.', true); return false; }
       const [g,cid] = v.c.split('|'), month = v.d.slice(0,7);
       if(!state.months.some(x=>x.mois===month)){ const nm = emptyMonth(month); applyRecTo(nm); state.months.push(nm); }
-      Object.assign(e, {amount:a, group:g, cat:cid, who:v.w, date:v.d, note:v.n.trim()});
+      Object.assign(e, {amount:a, group:g, cat:cid, who:v.w, date:v.d, note:v.n.trim(), acc:v.ac});
       ui.month = month; persist(); render(); toast('Opération modifiée'); }});
 }
 function renderDepenses(){
