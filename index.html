@@ -746,6 +746,7 @@ function snapshot(s){
   s.expenses.forEach(e=>h['e:'+e.id]=stable(strip(e)));
   s.accounts.forEach(a=>h['a:'+a.id]=stable(strip(a)));
   (s.debts||[]).forEach(d=>h['d:'+d.id]=stable(strip(d)));
+  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>s.categories[g].forEach(c=>h['k:'+g+'|'+c.id]=1));
   h.cats = stable(s.categories); h.goal = stable(s.goal);
   return h;
 }
@@ -772,6 +773,8 @@ function persist(){
   state.accounts.forEach(a=>{ const k='a:'+a.id; seen.add(k); const h=stable(strip(a)); if(lastHash[k]!==h){ a._u=now; lastHash[k]=stable(strip(a)); } });
   (state.debts||[]).forEach(d=>{ const k='d:'+d.id; seen.add(k); const h=stable(strip(d)); if(lastHash[k]!==h){ d._u=now; lastHash[k]=stable(strip(d)); } });
   Object.keys(lastHash).forEach(k=>{ if(/^[mpead]:/.test(k) && !seen.has(k)){ state.tomb[k]=now; delete lastHash[k]; } });
+  const ks = new Set(); ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>state.categories[g].forEach(c=>{ const k='k:'+g+'|'+c.id; ks.add(k); lastHash[k]=1; }));
+  Object.keys(lastHash).forEach(k=>{ if(k.slice(0,2)==='k:' && !ks.has(k)){ state.tomb[k]=now; delete lastHash[k]; } });
   const hc = stable(state.categories); if(lastHash.cats!==hc){ state.catsU=now; lastHash.cats=hc; }
   const hg = stable(state.goal); if(lastHash.goal!==hg){ state.goalU=now; lastHash.goal=hg; }
   state.updatedAt = now; state.updatedBy = currentUser||'';
@@ -780,6 +783,14 @@ function persist(){
   renderChrome();
 }
 
+/* Si un appareil a un poste de catégorie que l'autre n'a pas (et qu'une opération l'utilise), on le recrée pour ne rien perdre. */
+function healCats(cats, other, exps, tomb){
+  const used = new Set(exps.map(e=>e.group+'|'+e.cat));
+  ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{
+    (other&&other[g]||[]).forEach(c=>{ const k = g+'|'+c.id;
+      if(used.has(k) && !cats[g].some(x=>x.id===c.id) && !tomb['k:'+k]) cats[g].push({...c}); }); });
+  return cats;
+}
 function mergeStates(a, b){ // a = local, b = distant
   const tomb = {};
   [a.tomb,b.tomb].forEach(t=>Object.entries(t||{}).forEach(([k,v])=>{ tomb[k]=Math.max(tomb[k]||0, v); }));
@@ -794,7 +805,7 @@ function mergeStates(a, b){ // a = local, b = distant
   Object.keys(tomb).forEach(k=>{ if(tomb[k] < cutoff) delete tomb[k]; });
   return {
     months: pick(a.months,b.months,m=>'m:'+m.mois), projects: pick(a.projects,b.projects,p=>'p:'+p.id), expenses: pick(a.expenses,b.expenses,e=>'e:'+e.id), accounts: pick(a.accounts||[],b.accounts||[],x=>'a:'+x.id), debts: pick(a.debts||[],b.debts||[],x=>'d:'+x.id),
-    categories: clone(useA?a.categories:b.categories), catsU: Math.max(a.catsU||0,b.catsU||0),
+    categories: healCats(clone(useA?a.categories:b.categories), useA?b.categories:a.categories, pick(a.expenses,b.expenses,e=>'e:'+e.id), tomb), catsU: Math.max(a.catsU||0,b.catsU||0),
     goal: clone(goalA?a.goal:b.goal), goalU: Math.max(a.goalU||0,b.goalU||0),
     tomb, updatedAt: newer.updatedAt, updatedBy: newer.updatedBy
   };
@@ -930,7 +941,10 @@ function eff(m){
   ['entreeAnnexe','chargesFixes','chargesVariables'].forEach(g=>{ const b={...m[g]}; Object.entries(x[g]||{}).forEach(([k,v])=>{ b[k]=(b[k]||0)+v; }); o[g]=b; });
   return o;
 }
-const sumG = (m,g) => state.categories[g].reduce((s,c)=>s+(parseFloat(m[g][c.id])||0),0);
+const sumG = (m,g) => {
+  const ids = new Set(state.categories[g].map(c=>c.id)), x = (expIdx()[m.mois]||{})[g]||{};
+  return state.categories[g].reduce((s,c)=>s+(parseFloat(m[g][c.id])||0),0) + Object.entries(x).reduce((s,[k,v])=>s+(ids.has(k)?0:v),0);
+};
 function totalsFor(m){
   m = eff(m);
   const totalEntree = sumG(m,'entreeAnnexe'), totalSalaire = (m.salaire.nassim||0)+(m.salaire.roxane||0);
